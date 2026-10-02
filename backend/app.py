@@ -437,12 +437,20 @@ def get_products():
 
 @app.route("/api/orders", methods=["GET"])
 def get_orders():
-    conn   = get_db()
-    orders = conn.execute(
-        "SELECT * FROM orders ORDER BY created_at DESC LIMIT 20"
+    conn = get_db()
+    orders_rows = conn.execute(
+        "SELECT * FROM orders ORDER BY id DESC LIMIT 25"
     ).fetchall()
+    results = []
+    for o in orders_rows:
+        order_dict = dict(o)
+        items = conn.execute(
+            "SELECT * FROM order_items WHERE order_id=?", (order_dict["id"],)
+        ).fetchall()
+        order_dict["items"] = [dict(i) for i in items]
+        results.append(order_dict)
     conn.close()
-    return jsonify([dict(o) for o in orders])
+    return jsonify(results)
 
 
 if __name__ == "__main__":

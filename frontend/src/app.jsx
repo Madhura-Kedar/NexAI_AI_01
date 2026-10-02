@@ -2,9 +2,11 @@ import { useState } from "react"
 import ChatBox from "./components/ChatBox"
 import OrderPanel from "./components/OrderPanel"
 import BillCard from "./components/BillCard"
+import PreviousOrdersSidebar from "./components/PreviousOrdersSidebar"
 
 export default function App() {
     const [activeTab, setActiveTab] = useState("chat") // "chat" | "summary" | "bill"
+    const [sidebarOpen, setSidebarOpen] = useState(true)
     const [conversationId, setConversationId] = useState(null)
     const [messages, setMessages] = useState([
         { role: "bot", text: "Namaste! 🙏 Apna order boliye ya likhiye — Hindi ya English mein." }
@@ -257,50 +259,86 @@ export default function App() {
                         <span>➕</span>
                         <span>New Order</span>
                     </button>
+
+                    <button
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                        title={sidebarOpen ? "Hide Previous Orders Sidebar" : "Show Previous Orders Sidebar"}
+                        style={{
+                            background: sidebarOpen ? "#1e293b" : "#18202a",
+                            border: sidebarOpen ? "1px solid #3b82f6" : "1px solid #2b3644",
+                            color: sidebarOpen ? "#60a5fa" : "#cbd5e1",
+                            padding: "8px 14px",
+                            borderRadius: 10,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            transition: "all 0.15s ease"
+                        }}
+                    >
+                        <span>📋</span>
+                        <span>{sidebarOpen ? "Hide History" : "Past Orders"}</span>
+                    </button>
                 </div>
             </header>
 
-            {/* Main Content Area (Separated Pages) */}
-            <main style={{
-                flex: 1,
-                overflowY: "auto",
-                display: "flex",
-                flexDirection: "column"
-            }}>
-                {activeTab === "chat" && (
-                    <ChatBox
-                        messages={messages}
-                        onSend={sendMessage}
-                        loading={loading}
-                        confirmedCount={confirmed.length}
-                        grandTotal={bill?.grand_total}
-                        onNavigateToSummary={() => setActiveTab("summary")}
-                    />
-                )}
+            {/* Layout with Sidebar and Separated Main Content */}
+            <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+                {/* Previous Orders Sidebar */}
+                <PreviousOrdersSidebar
+                    isOpen={sidebarOpen}
+                    onToggle={() => setSidebarOpen(!sidebarOpen)}
+                    currentOrderId={conversationId}
+                    onReorder={(reorderText) => {
+                        setActiveTab("chat")
+                        sendMessage(reorderText)
+                    }}
+                />
 
-                {activeTab === "summary" && (
-                    <OrderPanel
-                        confirmed={confirmed}
-                        pending={pending}
-                        grandTotal={bill?.grand_total}
-                        onClarify={(optionText) => {
-                            sendMessage(optionText)
-                        }}
-                        onNavigateToChat={() => setActiveTab("chat")}
-                        onNavigateToBill={() => setActiveTab("bill")}
-                    />
-                )}
+                {/* Main Content Area (Separated Pages) */}
+                <main style={{
+                    flex: 1,
+                    overflowY: "auto",
+                    display: "flex",
+                    flexDirection: "column"
+                }}>
+                    {activeTab === "chat" && (
+                        <ChatBox
+                            messages={messages}
+                            onSend={sendMessage}
+                            loading={loading}
+                            confirmedCount={confirmed.length}
+                            grandTotal={bill?.grand_total}
+                            onNavigateToSummary={() => setActiveTab("summary")}
+                        />
+                    )}
 
-                {activeTab === "bill" && (
-                    <BillCard
-                        bill={bill}
-                        deliveryNote={deliveryNote}
-                        state={state}
-                        onNavigateToSummary={() => setActiveTab("summary")}
-                        onReset={resetOrder}
-                    />
-                )}
-            </main>
+                    {activeTab === "summary" && (
+                        <OrderPanel
+                            confirmed={confirmed}
+                            pending={pending}
+                            grandTotal={bill?.grand_total}
+                            onClarify={(optionText) => {
+                                sendMessage(optionText)
+                            }}
+                            onNavigateToChat={() => setActiveTab("chat")}
+                            onNavigateToBill={() => setActiveTab("bill")}
+                        />
+                    )}
+
+                    {activeTab === "bill" && (
+                        <BillCard
+                            bill={bill}
+                            deliveryNote={deliveryNote}
+                            state={state}
+                            onNavigateToSummary={() => setActiveTab("summary")}
+                            onReset={resetOrder}
+                        />
+                    )}
+                </main>
+            </div>
         </div>
     )
 }
