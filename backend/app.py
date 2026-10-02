@@ -731,6 +731,67 @@ def get_messages_by_order(order_id):
     return jsonify(json.loads(row['chat_messages'] or '[]'))
 
 
+@app.route("/api/orders/<int:order_id>/customer", methods=["POST"])
+def update_order_customer(order_id):
+    """Save/update customer details for an order."""
+    data = request.get_json() or {}
+    name = data.get("name", "").strip()
+    phone = data.get("phone", "").strip()
+    address = data.get("address", "").strip()
+
+    conn = get_db()
+    conn.execute(
+        "UPDATE orders SET customer_name=?, customer_phone=?, customer_address=? WHERE id=?",
+        (name, phone, address, order_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "message": "Customer details saved successfully"})
+
+
+@app.route("/api/orders/<int:order_id>/status", methods=["POST"])
+def update_order_status(order_id):
+    """Update order status (e.g. pending, confirmed, delivered, cancelled)."""
+    data = request.get_json() or {}
+    status = data.get("status", "confirmed").strip()
+    conn = get_db()
+    conn.execute("UPDATE orders SET status=? WHERE id=?", (status, order_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "status": status})
+
+
+@app.route("/api/shopkeeper/stats", methods=["GET"])
+def get_shopkeeper_stats():
+    """Calculate revenue, order counts, and customer statistics for the dashboard."""
+    conn = get_db()
+    total_rev = conn.execute(
+        "SELECT COALESCE(SUM(total), 0) as rev FROM orders WHERE status != 'cancelled'"
+    ).fetchone()["rev"]
+    total_orders = conn.execute("SELECT COUNT(*) as count FROM orders").fetchone()["count"]
+    confirmed_orders = conn.execute(
+        "SELECT COUNT(*) as count FROM orders WHERE status IN ('confirmed', 'delivered')"
+    ).fetchone()["count"]
+
+    today_stats = conn.execute(
+        "SELECT COALESCE(SUM(total), 0) as rev, COUNT(*) as count FROM orders WHERE DATE(created_at) = DATE('now', 'localtime') AND status != 'cancelled'"
+    ).fetchone()
+
+    unique_cust = conn.execute(
+        "SELECT COUNT(DISTINCT CASE WHEN customer_phone != '' THEN customer_phone WHEN customer_name != '' THEN customer_name END) as cust_count FROM orders WHERE customer_name != '' OR customer_phone != ''"
+    ).fetchone()["cust_count"]
+
+    conn.close()
+    return jsonify({
+        "total_revenue": round(total_rev, 2),
+        "total_orders": total_orders,
+        "confirmed_orders": confirmed_orders,
+        "today_revenue": round(today_stats["rev"], 2),
+        "today_orders": today_stats["count"],
+        "unique_customers": unique_cust or 0
+    })
+
+
 if __name__ == "__main__":
     init_db()
     app.run(debug=True, port=5000)

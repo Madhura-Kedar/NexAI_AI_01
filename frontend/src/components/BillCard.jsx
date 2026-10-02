@@ -1,11 +1,41 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { translations } from "../utils/translations"
 
-export default function BillCard({ bill, state, onNavigateToSummary, onReset }) {
+export default function BillCard({ bill, state, orderId, lang = "en", onNavigateToSummary, onReset }) {
+    const t = translations[lang] || translations.en
     const isConfirmed = state === "confirmed"
     const [copied, setCopied] = useState(false)
     const [customerName, setCustomerName] = useState("")
     const [customerPhone, setCustomerPhone] = useState("")
     const [customerAddress, setCustomerAddress] = useState("")
+    const [saveStatus, setSaveStatus] = useState("")
+    const [saving, setSaving] = useState(false)
+
+    // Save customer details to DB when typed or on button click
+    const handleSaveToDb = async () => {
+        if (!orderId && !bill) return
+        setSaving(true)
+        try {
+            const targetOrderId = orderId || 1
+            const res = await fetch(`http://localhost:5000/api/orders/${targetOrderId}/customer`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: customerName,
+                    phone: customerPhone,
+                    address: customerAddress
+                })
+            })
+            if (res.ok) {
+                setSaveStatus(t.savedSuccess || "✓ Saved to Database!")
+                setTimeout(() => setSaveStatus(""), 3000)
+            }
+        } catch (e) {
+            console.error("Failed to save customer to DB", e)
+        } finally {
+            setSaving(false)
+        }
+    }
 
     const handlePrint = () => {
         window.print()
@@ -29,8 +59,10 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
         text += `*TOTAL: ₹${bill.grand_total}*\n\n`
         text += `Thank you for shopping with us! 🙏`
 
+        const cleanPhone = customerPhone.replace(/[^0-9]/g, "")
+        const phoneParam = cleanPhone ? `phone=${cleanPhone}&` : ""
         const encoded = encodeURI(text)
-        window.open(`https://api.whatsapp.com/send?text=${encoded}`, "_blank")
+        window.open(`https://api.whatsapp.com/send?${phoneParam}text=${encoded}`, "_blank")
     }
 
     const copyText = () => {
@@ -137,7 +169,7 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                             cursor: "pointer"
                         }}
                     >
-                        {copied ? "✓ Copied!" : "📋 Copy Summary"}
+                        {copied ? t.copied : t.copySummary}
                     </button>
                     <button
                         onClick={handleWhatsApp}
@@ -155,7 +187,7 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                             gap: 6
                         }}
                     >
-                        📲 WhatsApp
+                        {t.whatsApp}
                     </button>
                     <button
                         onClick={handlePrint}
@@ -173,7 +205,7 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                             gap: 6
                         }}
                     >
-                        🖨️ Print Receipt
+                        {t.printReceipt}
                     </button>
                 </div>
             </div>
@@ -188,19 +220,44 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
             }}>
                 <div style={{
                     display: "flex",
-                    alignItems: "center",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    flexWrap: "wrap",
                     gap: 10,
                     marginBottom: 16
                 }}>
-                    <span style={{ fontSize: 20 }}>👤</span>
-                    <div>
-                        <h3 style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>
-                            Customer Details for Billing & Delivery
-                        </h3>
-                        <p style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                            Details entered here will be printed on the invoice and shared on WhatsApp
-                        </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 20 }}>👤</span>
+                        <div>
+                            <h3 style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>
+                                {t.custDetailsTitle}
+                            </h3>
+                            <p style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                                {t.custDetailsSubtitle}
+                            </p>
+                        </div>
                     </div>
+
+                    <button
+                        onClick={handleSaveToDb}
+                        disabled={saving}
+                        style={{
+                            background: saveStatus ? "#15803d" : "#1e293b",
+                            border: "1px solid #334155",
+                            color: saveStatus ? "#fff" : "#25D366",
+                            borderRadius: 8,
+                            padding: "6px 14px",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            transition: "all 0.15s ease"
+                        }}
+                    >
+                        {saving ? "Saving..." : saveStatus || t.saveCustomerBtn}
+                    </button>
                 </div>
 
                 <div style={{
@@ -211,13 +268,14 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                     {/* Customer Name */}
                     <div>
                         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>
-                            Customer Name
+                            {t.custNameLabel}
                         </label>
                         <input
                             type="text"
                             value={customerName}
                             onChange={(e) => setCustomerName(e.target.value)}
-                            placeholder="e.g. Rahul Sharma"
+                            onBlur={handleSaveToDb}
+                            placeholder={t.custNamePlaceholder}
                             style={{
                                 width: "100%",
                                 background: "#0c0f13",
@@ -230,20 +288,20 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                                 transition: "border-color 0.15s ease"
                             }}
                             onFocus={(e) => e.target.style.borderColor = "#25D366"}
-                            onBlur={(e) => e.target.style.borderColor = "#283344"}
                         />
                     </div>
 
                     {/* Phone Number */}
                     <div>
                         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>
-                            Phone Number
+                            {t.custPhoneLabel}
                         </label>
                         <input
                             type="tel"
                             value={customerPhone}
                             onChange={(e) => setCustomerPhone(e.target.value)}
-                            placeholder="e.g. +91 98765 43210"
+                            onBlur={handleSaveToDb}
+                            placeholder={t.custPhonePlaceholder}
                             style={{
                                 width: "100%",
                                 background: "#0c0f13",
@@ -256,7 +314,6 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                                 transition: "border-color 0.15s ease"
                             }}
                             onFocus={(e) => e.target.style.borderColor = "#25D366"}
-                            onBlur={(e) => e.target.style.borderColor = "#283344"}
                         />
                     </div>
                 </div>
@@ -264,13 +321,14 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                 {/* Customer Address */}
                 <div style={{ marginTop: 14 }}>
                     <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>
-                        Customer Address (Delivery Location)
+                        {t.custAddressLabel}
                     </label>
                     <textarea
                         rows={2}
                         value={customerAddress}
                         onChange={(e) => setCustomerAddress(e.target.value)}
-                        placeholder="e.g. Flat 402, Gokul Heights, MG Road, Landmark: Near City Hospital"
+                        onBlur={handleSaveToDb}
+                        placeholder={t.custAddressPlaceholder}
                         style={{
                             width: "100%",
                             background: "#0c0f13",
@@ -285,7 +343,6 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                             transition: "border-color 0.15s ease"
                         }}
                         onFocus={(e) => e.target.style.borderColor = "#25D366"}
-                        onBlur={(e) => e.target.style.borderColor = "#283344"}
                     />
                 </div>
             </div>
@@ -326,7 +383,7 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                         borderTop: "1px solid #1e2632"
                     }}>
                         <span>Date: {new Date().toLocaleDateString("en-IN")} {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
-                        <span>Invoice: #ORD-{Math.floor(1000 + Math.random() * 9000)}</span>
+                        <span>Invoice: #ORD-{orderId || Math.floor(1000 + Math.random() * 9000)}</span>
                     </div>
                 </div>
 
@@ -343,7 +400,7 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                     <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                         <div>
                             <span style={{ color: "#64748b" }}>Customer: </span>
-                            <strong style={{ color: "#e2e8f0" }}>{customerName.trim() || "Walk-in Customer"}</strong>
+                            <strong style={{ color: "#e2e8f0" }}>{customerName.trim() || t.walkInCustomer}</strong>
                         </div>
                         <div>
                             <span style={{ color: "#64748b" }}>Phone: </span>
@@ -352,7 +409,7 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                     </div>
                     <div style={{ marginTop: 4 }}>
                         <span style={{ color: "#64748b" }}>Address: </span>
-                        <span style={{ color: "#cbd5e1" }}>{customerAddress.trim() || "Store Counter / Pickup"}</span>
+                        <span style={{ color: "#cbd5e1" }}>{customerAddress.trim() || t.storePickup}</span>
                     </div>
                 </div>
 
@@ -425,14 +482,14 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                     gap: 6
                 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#94a3b8" }}>
-                        <span>Item Subtotal ({bill.item_count || bill.line_items?.length} items):</span>
+                        <span>{t.subtotal} ({bill.item_count || bill.line_items?.length} items):</span>
                         <span>₹{bill.subtotal.toFixed(2)}</span>
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#94a3b8" }}>
-                        <span>Delivery Charges:</span>
+                        <span>{t.deliveryCharges}:</span>
                         <span style={{ color: bill.delivery_charge === 0 ? "#25D366" : "#cbd5e1" }}>
-                            {bill.delivery_charge === 0 ? "FREE (Orders > ₹500)" : `₹${bill.delivery_charge.toFixed(2)}`}
+                            {bill.delivery_charge === 0 ? `${t.freeDelivery} (Orders > ₹500)` : `₹${bill.delivery_charge.toFixed(2)}`}
                         </span>
                     </div>
 
@@ -447,7 +504,7 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                         paddingTop: 10,
                         borderTop: "1px solid #1f2733"
                     }}>
-                        <span>GRAND TOTAL:</span>
+                        <span>{t.grandTotal}:</span>
                         <span>₹{bill.grand_total.toFixed(2)}</span>
                     </div>
                 </div>
@@ -483,7 +540,7 @@ export default function BillCard({ bill, state, onNavigateToSummary, onReset }) 
                         cursor: "pointer"
                     }}
                 >
-                    🔄 Start Another New Order
+                    🔄 {t.newOrder}
                 </button>
             </div>
         </div>

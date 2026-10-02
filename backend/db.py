@@ -28,7 +28,10 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             status TEXT DEFAULT 'pending',
-            total REAL DEFAULT 0
+            total REAL DEFAULT 0,
+            customer_name TEXT DEFAULT '',
+            customer_phone TEXT DEFAULT '',
+            customer_address TEXT DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS order_items (
@@ -56,10 +59,19 @@ def init_db():
         );
     """)
 
-    # Safe migration: add chat_messages column if it doesn't exist yet (for existing DBs)
+    # Safe migration: add chat_messages column if it doesn't exist yet
     existing_cols = [row[1] for row in cursor.execute("PRAGMA table_info(conversations)").fetchall()]
     if "chat_messages" not in existing_cols:
         cursor.execute("ALTER TABLE conversations ADD COLUMN chat_messages TEXT DEFAULT '[]'")
+
+    # Safe migration: add customer details columns to orders if not present
+    existing_order_cols = [row[1] for row in cursor.execute("PRAGMA table_info(orders)").fetchall()]
+    if "customer_name" not in existing_order_cols:
+        cursor.execute("ALTER TABLE orders ADD COLUMN customer_name TEXT DEFAULT ''")
+    if "customer_phone" not in existing_order_cols:
+        cursor.execute("ALTER TABLE orders ADD COLUMN customer_phone TEXT DEFAULT ''")
+    if "customer_address" not in existing_order_cols:
+        cursor.execute("ALTER TABLE orders ADD COLUMN customer_address TEXT DEFAULT ''")
 
     conn.commit()
     conn.close()

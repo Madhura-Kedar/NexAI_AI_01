@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import ChatBox from "./components/ChatBox"
 import OrderPanel from "./components/OrderPanel"
 import BillCard from "./components/BillCard"
 import PreviousOrdersSidebar from "./components/PreviousOrdersSidebar"
+import ShopkeeperDashboard from "./components/ShopkeeperDashboard"
+import { translations, LANGUAGES } from "./utils/translations"
 
 const STORAGE_KEY = "kirana_active_session"
+const LANG_STORAGE_KEY = "kirana_selected_lang"
 
 function loadSession() {
     try {
@@ -31,6 +34,22 @@ const INIT_MSG = [{ role: "bot", text: "Namaste! 🙏 Apna order boliye ya likhi
 export default function App() {
     const [activeTab, setActiveTab] = useState("chat")
     const [sidebarOpen, setSidebarOpen] = useState(true)
+    const [lang, setLang] = useState(() => {
+        try {
+            return localStorage.getItem(LANG_STORAGE_KEY) || "en"
+        } catch {
+            return "en"
+        }
+    })
+
+    const handleLangChange = (newLang) => {
+        setLang(newLang)
+        try {
+            localStorage.setItem(LANG_STORAGE_KEY, newLang)
+        } catch {}
+    }
+
+    const t = translations[lang] || translations.en
 
     // Restore session from localStorage on first mount
     const saved = loadSession()
@@ -147,7 +166,7 @@ export default function App() {
                     </div>
                     <div>
                         <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
-                            <span>Kirana Order Desk</span>
+                            <span>{t.appName}</span>
                             <span style={{
                                 width: 8,
                                 height: 8,
@@ -157,7 +176,7 @@ export default function App() {
                                 boxShadow: "0 0 8px #25D366"
                             }} />
                         </div>
-                        <div style={{ fontSize: 11, color: "#64748b" }}>AI Hinglish Voice Assistant</div>
+                        <div style={{ fontSize: 11, color: "#64748b" }}>{t.appSubtitle}</div>
                     </div>
                 </div>
 
@@ -177,7 +196,7 @@ export default function App() {
                             display: "flex",
                             alignItems: "center",
                             gap: 8,
-                            padding: "8px 18px",
+                            padding: "8px 16px",
                             borderRadius: 8,
                             border: "none",
                             background: activeTab === "chat" ? "#1f2937" : "transparent",
@@ -189,7 +208,7 @@ export default function App() {
                         }}
                     >
                         <span>💬</span>
-                        <span>1. Voice & Chat Desk</span>
+                        <span>{t.tabChat}</span>
                     </button>
 
                     {/* Tab 2: Order Summary */}
@@ -199,7 +218,7 @@ export default function App() {
                             display: "flex",
                             alignItems: "center",
                             gap: 8,
-                            padding: "8px 18px",
+                            padding: "8px 16px",
                             borderRadius: 8,
                             border: "none",
                             background: activeTab === "summary" ? "#1f2937" : "transparent",
@@ -211,7 +230,7 @@ export default function App() {
                         }}
                     >
                         <span>📦</span>
-                        <span>2. Order Summary</span>
+                        <span>{t.tabSummary}</span>
                         {confirmed.length > 0 && (
                             <span style={{
                                 background: "#25D366",
@@ -247,7 +266,7 @@ export default function App() {
                             display: "flex",
                             alignItems: "center",
                             gap: 8,
-                            padding: "8px 18px",
+                            padding: "8px 16px",
                             borderRadius: 8,
                             border: "none",
                             background: activeTab === "bill" ? "#1f2937" : "transparent",
@@ -259,7 +278,7 @@ export default function App() {
                         }}
                     >
                         <span>🧾</span>
-                        <span>3. Final Bill</span>
+                        <span>{t.tabBill}</span>
                         {bill && (
                             <span style={{
                                 background: state === "confirmed" ? "#0d331e" : "#2a1e0b",
@@ -274,10 +293,65 @@ export default function App() {
                             </span>
                         )}
                     </button>
+
+                    {/* Tab 4: Shopkeeper Dashboard */}
+                    <button
+                        onClick={() => setActiveTab("dashboard")}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "8px 16px",
+                            borderRadius: 8,
+                            border: "none",
+                            background: activeTab === "dashboard" ? "linear-gradient(135deg, #1e3a2b 0%, #15291e 100%)" : "transparent",
+                            color: activeTab === "dashboard" ? "#4ade80" : "#94a3b8",
+                            borderBottom: activeTab === "dashboard" ? "2px solid #25D366" : "none",
+                            fontWeight: activeTab === "dashboard" ? 700 : 500,
+                            fontSize: 13,
+                            cursor: "pointer",
+                            transition: "all 0.15s ease"
+                        }}
+                    >
+                        <span>📊</span>
+                        <span>{t.tabDashboard}</span>
+                    </button>
                 </nav>
 
                 {/* Right controls */}
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {/* Global Multi-Lingual Language Dropdown */}
+                    <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        background: "#18202a",
+                        border: "1px solid #2b3644",
+                        borderRadius: 10,
+                        padding: "4px 8px"
+                    }}>
+                        <span style={{ fontSize: 13 }}>🌐</span>
+                        <select
+                            value={lang}
+                            onChange={(e) => handleLangChange(e.target.value)}
+                            style={{
+                                background: "transparent",
+                                color: "#25D366",
+                                border: "none",
+                                outline: "none",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                cursor: "pointer"
+                            }}
+                        >
+                            {LANGUAGES.map(l => (
+                                <option key={l.code} value={l.code} style={{ background: "#11161f", color: "#fff" }}>
+                                    {l.flag} {l.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
                     <button
                         onClick={resetOrder}
                         title="Start a fresh new customer order"
@@ -285,7 +359,7 @@ export default function App() {
                             background: "#18202a",
                             border: "1px solid #2b3644",
                             color: "#cbd5e1",
-                            padding: "8px 16px",
+                            padding: "8px 14px",
                             borderRadius: 10,
                             fontSize: 12,
                             fontWeight: 600,
@@ -299,7 +373,7 @@ export default function App() {
                         onMouseOut={(e) => e.currentTarget.style.borderColor = "#2b3644"}
                     >
                         <span>➕</span>
-                        <span>New Order</span>
+                        <span>{t.newOrder}</span>
                     </button>
 
                     <button
@@ -309,7 +383,7 @@ export default function App() {
                             background: sidebarOpen ? "#1e293b" : "#18202a",
                             border: sidebarOpen ? "1px solid #3b82f6" : "1px solid #2b3644",
                             color: sidebarOpen ? "#60a5fa" : "#cbd5e1",
-                            padding: "8px 14px",
+                            padding: "8px 12px",
                             borderRadius: 10,
                             fontSize: 12,
                             fontWeight: 600,
@@ -321,7 +395,7 @@ export default function App() {
                         }}
                     >
                         <span>📋</span>
-                        <span>{sidebarOpen ? "Hide History" : "Past Orders"}</span>
+                        <span>{sidebarOpen ? t.hideHistory : t.pastOrders}</span>
                     </button>
                 </div>
             </header>
@@ -374,8 +448,21 @@ export default function App() {
                         <BillCard
                             bill={bill}
                             state={state}
+                            orderId={conversationId}
+                            lang={lang}
                             onNavigateToSummary={() => setActiveTab("summary")}
                             onReset={resetOrder}
+                        />
+                    )}
+
+                    {activeTab === "dashboard" && (
+                        <ShopkeeperDashboard
+                            lang={lang}
+                            onLangChange={handleLangChange}
+                            onReorder={(reorderText) => {
+                                setActiveTab("chat")
+                                sendMessage(reorderText)
+                            }}
                         />
                     )}
                 </main>
