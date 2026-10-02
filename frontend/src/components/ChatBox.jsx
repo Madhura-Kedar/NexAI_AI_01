@@ -5,12 +5,104 @@ export default function ChatBox({ messages, onSend, loading, confirmedCount, gra
     const [input, setInput] = useState("")
     const [listening, setListening] = useState(false)
     const [voiceTranscript, setVoiceTranscript] = useState("")
+    const [soundEnabled, setSoundEnabled] = useState(true)
+    const [speakingIndex, setSpeakingIndex] = useState(null)
     const bottomRef = useRef(null)
     const recognitionRef = useRef(null)
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" })
     }, [messages, voiceTranscript])
+
+    // Load voices on mount
+    useEffect(() => {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.getVoices()
+            window.speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices()
+            }
+        }
+        return () => {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel()
+            }
+        }
+    }, [])
+
+    // Prepare text for speech (convert symbols, numbers, currencies into natural Hindi words)
+    const prepareTextForSpeech = (text) => {
+        if (!text) return ""
+        return text
+            .replace(/₹\s*(\d+)/g, "$1 rupaye")
+            .replace(/Rs\.?\s*(\d+)/gi, "$1 rupaye")
+            .replace(/\b(\d+)\s*kg\b/gi, "$1 kilo")
+            .replace(/\b(\d+)\s*g\b/gi, "$1 gram")
+            .replace(/\b(\d+)\s*l\b/gi, "$1 litre")
+            .replace(/\b(\d+)\s*ml\b/gi, "$1 mili litre")
+            .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
+            .replace(/[-_~*#•]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+    }
+
+    const getPreferredVoice = () => {
+        if (!('speechSynthesis' in window)) return null
+        const voices = window.speechSynthesis.getVoices()
+        if (!voices || voices.length === 0) return null
+
+        // 1. Hindi voice
+        const hiVoice = voices.find(v => v.lang.toLowerCase().includes("hi"))
+        if (hiVoice) return hiVoice
+
+        // 2. Indian English voice
+        const enInVoice = voices.find(v => v.lang.toLowerCase().includes("en-in") || v.lang.toLowerCase().includes("en_in"))
+        if (enInVoice) return enInVoice
+
+        // 3. Fallback English
+        return voices.find(v => v.lang.toLowerCase().startsWith("en")) || voices[0]
+    }
+
+    const speakBotReply = (text, index) => {
+        if (!('speechSynthesis' in window)) return
+
+        if (speakingIndex === index) {
+            // Stop speaking if clicked again
+            window.speechSynthesis.cancel()
+            setSpeakingIndex(null)
+            return
+        }
+
+        window.speechSynthesis.cancel()
+        const clean = prepareTextForSpeech(text)
+        if (!clean) return
+
+        const utterance = new SpeechSynthesisUtterance(clean)
+        const voice = getPreferredVoice()
+        if (voice) {
+            utterance.voice = voice
+            utterance.lang = voice.lang
+        } else {
+            utterance.lang = "hi-IN"
+        }
+
+        utterance.rate = 0.95
+        utterance.pitch = 1.0
+
+        utterance.onstart = () => setSpeakingIndex(index)
+        utterance.onend = () => setSpeakingIndex(null)
+        utterance.onerror = () => setSpeakingIndex(null)
+
+        window.speechSynthesis.speak(utterance)
+    }
+
+    // Automatically speak the latest bot reply
+    useEffect(() => {
+        const lastIdx = messages.length - 1
+        const lastMsg = messages[lastIdx]
+        if (lastMsg && lastMsg.role === "bot" && soundEnabled && lastIdx > 0) {
+            speakBotReply(lastMsg.text, lastIdx)
+        }
+    }, [messages.length, soundEnabled])
 
     const handleSend = (textToSend) => {
         const raw = (textToSend || input).trim()
@@ -22,6 +114,12 @@ export default function ChatBox({ messages, onSend, loading, confirmedCount, gra
     }
 
     const toggleVoice = () => {
+        // Stop any ongoing bot speech so it doesn't conflict with mic
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel()
+            setSpeakingIndex(null)
+        }
+
         if (listening) {
             recognitionRef.current?.stop()
             setListening(false)
@@ -98,50 +196,83 @@ export default function ChatBox({ messages, onSend, loading, confirmedCount, gra
             width: "100%",
             position: "relative"
         }}>
-            {/* Quick Status Bar if items exist */}
-            {confirmedCount > 0 && (
-                <div style={{
-                    padding: "10px 18px",
-                    background: "linear-gradient(90deg, #0d2e1a 0%, #133a22 100%)",
-                    borderBottom: "1px solid #1e5a32",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.2)"
-                }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: 18 }}>🛒</span>
-                        <div>
-                            <span style={{ fontWeight: 700, color: "#25D366", fontSize: 14 }}>
-                                {confirmedCount} Item{confirmedCount > 1 ? "s" : ""} Confirmed
+            {/* Top Bar with Audio Toggle & Cart Status */}
+            <div style={{
+                padding: "8px 18px",
+                background: "#12171f",
+                borderBottom: "1px solid #1f2836",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 8
+            }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {confirmedCount > 0 ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontWeight: 700, color: "#25D366", fontSize: 13 }}>
+                                🛒 {confirmedCount} Confirmed {grandTotal ? `· ₹${grandTotal}` : ""}
                             </span>
-                            {grandTotal && (
-                                <span style={{ color: "#a5d6a7", fontSize: 13, marginLeft: 8 }}>
-                                    · Total: ₹{grandTotal}
-                                </span>
-                            )}
+                            <button
+                                onClick={onNavigateToSummary}
+                                style={{
+                                    background: "#1c2c22",
+                                    color: "#25D366",
+                                    border: "1px solid #285437",
+                                    borderRadius: 6,
+                                    padding: "3px 10px",
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    cursor: "pointer"
+                                }}
+                            >
+                                View ➔
+                            </button>
                         </div>
-                    </div>
+                    ) : (
+                        <span style={{ fontSize: 12, color: "#64748b" }}>
+                            Boliye ya type karein apna grocery order
+                        </span>
+                    )}
+                </div>
+
+                {/* Voice Audio Speaker Output Toggle */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <button
-                        onClick={onNavigateToSummary}
+                        onClick={() => {
+                            if (soundEnabled && 'speechSynthesis' in window) {
+                                window.speechSynthesis.cancel()
+                                setSpeakingIndex(null)
+                            }
+                            setSoundEnabled(!soundEnabled)
+                        }}
+                        title={soundEnabled ? "Audio replies ON (Click to Mute)" : "Audio replies OFF (Click to Unmute)"}
                         style={{
-                            background: "#25D366",
-                            color: "#000",
-                            border: "none",
-                            borderRadius: 8,
-                            padding: "6px 14px",
-                            fontWeight: 600,
+                            background: soundEnabled ? "rgba(37, 211, 102, 0.12)" : "#1a212b",
+                            border: soundEnabled ? "1px solid #25D366" : "1px solid #334155",
+                            color: soundEnabled ? "#25D366" : "#94a3b8",
+                            borderRadius: 20,
+                            padding: "4px 12px",
                             fontSize: 12,
+                            fontWeight: 600,
                             cursor: "pointer",
                             display: "flex",
                             alignItems: "center",
-                            gap: 6
+                            gap: 6,
+                            transition: "all 0.15s ease"
                         }}
                     >
-                        View Order Summary ➔
+                        <span>{soundEnabled ? "🔊 Voice Reply: ON" : "🔇 Voice Reply: OFF"}</span>
+                        <span style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: soundEnabled ? "#25D366" : "#64748b",
+                            display: "inline-block"
+                        }} />
                     </button>
                 </div>
-            )}
+            </div>
 
             {/* Chat Messages Feed */}
             <div style={{
@@ -168,7 +299,7 @@ export default function ChatBox({ messages, onSend, loading, confirmedCount, gra
                             Kirana Voice Order Desk
                         </h3>
                         <p style={{ fontSize: 13, color: "#9aa5b5", maxWidth: 460, margin: "0 auto 16px", lineHeight: 1.5 }}>
-                            Boliye ya type karein Hinglish mein — jaise aap aam taur par dukan pe bolte hain!
+                            Boliye Hindi ya Hinglish mein — bot bol kar aur likh kar dono mein jawab dega!
                         </p>
                         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8 }}>
                             {quickPills.map((pill, idx) => (
@@ -208,7 +339,7 @@ export default function ChatBox({ messages, onSend, loading, confirmedCount, gra
                     >
                         <div
                             style={{
-                                maxWidth: "75%",
+                                maxWidth: "78%",
                                 padding: "12px 18px",
                                 borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
                                 background: m.role === "user"
@@ -221,15 +352,45 @@ export default function ChatBox({ messages, onSend, loading, confirmedCount, gra
                                 boxShadow: m.role === "user"
                                     ? "0 4px 14px rgba(21, 128, 61, 0.3)"
                                     : "0 4px 14px rgba(0, 0, 0, 0.25)",
-                                whiteSpace: "pre-line"
+                                whiteSpace: "pre-line",
+                                position: "relative"
                             }}
                         >
                             {m.role === "bot" && (
-                                <div style={{ fontSize: 11, fontWeight: 700, color: "#68d391", marginBottom: 4, letterSpacing: 0.5 }}>
-                                    🛒 KIRANA DESK
+                                <div style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    marginBottom: 6,
+                                    borderBottom: "1px solid #252f3e",
+                                    paddingBottom: 4
+                                }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: "#68d391", letterSpacing: 0.5 }}>
+                                        🛒 KIRANA DESK
+                                    </div>
+                                    <button
+                                        onClick={() => speakBotReply(m.text, i)}
+                                        title={speakingIndex === i ? "Stop audio" : "Listen in audio"}
+                                        style={{
+                                            background: speakingIndex === i ? "#25D366" : "#242d3b",
+                                            color: speakingIndex === i ? "#000" : "#a5d6a7",
+                                            border: "none",
+                                            borderRadius: 12,
+                                            padding: "3px 8px",
+                                            fontSize: 11,
+                                            fontWeight: 700,
+                                            cursor: "pointer",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 4,
+                                            transition: "all 0.15s ease"
+                                        }}
+                                    >
+                                        <span>{speakingIndex === i ? "⏹️ Bol raha hai..." : "🔊 Suniye"}</span>
+                                    </button>
                                 </div>
                             )}
-                            {m.text}
+                            <div>{m.text}</div>
                         </div>
                     </div>
                 ))}
