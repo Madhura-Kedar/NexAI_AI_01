@@ -792,6 +792,125 @@ def get_shopkeeper_stats():
     })
 
 
+@app.route("/api/store", methods=["GET"])
+def get_store_settings():
+    """Retrieve store profile and shopkeeper details."""
+    conn = get_db()
+    row = conn.execute("SELECT * FROM store_settings WHERE id=1").fetchone()
+    conn.close()
+    if not row:
+        return jsonify({
+            "store_name": "Apna Kirana Store",
+            "owner_name": "Ramesh Kumar",
+            "phone": "+91 98765 43210",
+            "address": "Main Market Road, City Centre, Near Clock Tower",
+            "upi_id": "apnakirana@upi",
+            "gstin": "27AABCS1429B1Z",
+            "opening_hours": "8:00 AM - 10:00 PM"
+        })
+    return jsonify(dict(row))
+
+
+@app.route("/api/store", methods=["POST"])
+def update_store_settings():
+    """Update store and shopkeeper details."""
+    data = request.get_json() or {}
+    store_name = data.get("store_name", "Apna Kirana Store").strip()
+    owner_name = data.get("owner_name", "Ramesh Kumar").strip()
+    phone = data.get("phone", "+91 98765 43210").strip()
+    address = data.get("address", "").strip()
+    upi_id = data.get("upi_id", "").strip()
+    gstin = data.get("gstin", "").strip()
+    opening_hours = data.get("opening_hours", "8:00 AM - 10:00 PM").strip()
+
+    conn = get_db()
+    conn.execute("""
+        UPDATE store_settings
+        SET store_name=?, owner_name=?, phone=?, address=?, upi_id=?, gstin=?, opening_hours=?
+        WHERE id=1
+    """, (store_name, owner_name, phone, address, upi_id, gstin, opening_hours))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "message": "Store details updated successfully"})
+
+
+@app.route("/api/products", methods=["POST"])
+def add_product():
+    """Add a new product to inventory."""
+    data = request.get_json() or {}
+    name = data.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "Product name is required"}), 400
+
+    aliases = data.get("aliases", "").strip() or name.lower()
+    brand = data.get("brand", "").strip() or None
+    category = data.get("category", "grocery").strip().lower()
+    unit = data.get("unit", "packet").strip()
+    price = float(data.get("price", 0))
+    stock = int(data.get("stock", 0))
+
+    conn = get_db()
+    cursor = conn.execute(
+        "INSERT INTO products (name, aliases, brand, category, unit, price, stock) VALUES (?,?,?,?,?,?,?)",
+        (name, aliases, brand, category, unit, price, stock)
+    )
+    new_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "id": new_id, "message": f"Product '{name}' added successfully"})
+
+
+@app.route("/api/products/<int:prod_id>/update", methods=["POST"])
+def update_product(prod_id):
+    """Update an existing product's stock, price, etc."""
+    data = request.get_json() or {}
+    conn = get_db()
+    current = conn.execute("SELECT * FROM products WHERE id=?", (prod_id,)).fetchone()
+    if not current:
+        conn.close()
+        return jsonify({"error": "Product not found"}), 404
+
+    name = data.get("name", current["name"]).strip()
+    price = float(data.get("price", current["price"]))
+    stock = int(data.get("stock", current["stock"]))
+    category = data.get("category", current["category"]).strip()
+    brand = data.get("brand", current["brand"])
+
+    conn.execute(
+        "UPDATE products SET name=?, price=?, stock=?, category=?, brand=? WHERE id=?",
+        (name, price, stock, category, brand, prod_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "message": f"Product #{prod_id} updated"})
+
+
+@app.route("/api/products/<int:prod_id>", methods=["DELETE"])
+def delete_product(prod_id):
+    """Remove a product from inventory."""
+    conn = get_db()
+    conn.execute("DELETE FROM products WHERE id=?", (prod_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "message": f"Product #{prod_id} deleted"})
+
+
+@app.route("/api/orders/<int:order_id>", methods=["GET"])
+def get_order_details(order_id):
+    """Retrieve full order details, customer info, and live status for customer sync."""
+    conn = get_db()
+    order = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not order:
+        conn.close()
+        return jsonify({"error": "Order not found"}), 404
+
+    order_dict = dict(order)
+    items = conn.execute("SELECT * FROM order_items WHERE order_id=?", (order_id,)).fetchall()
+    order_dict["items"] = [dict(i) for i in items]
+    conn.close()
+    return jsonify(order_dict)
+
+
 if __name__ == "__main__":
     init_db()
     app.run(debug=True, port=5000)

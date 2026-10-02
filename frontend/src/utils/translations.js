@@ -10,25 +10,90 @@ export const translations = {
     en: {
         appName: "Kirana Order Desk",
         appSubtitle: "AI Voice Assistant & Store Management",
+        customerMode: "🛍️ Customer Ordering",
+        shopkeeperMode: "🏪 Shopkeeper Portal",
         tabChat: "1. Voice & Chat Desk",
         tabSummary: "2. Order Summary",
         tabBill: "3. Final Bill",
-        tabDashboard: "4. Shopkeeper Dashboard",
+        tabDashboard: "Shopkeeper Dashboard",
         newOrder: "New Order",
         pastOrders: "Past Orders",
         hideHistory: "Hide History",
         
-        // Dashboard Stats
-        dashboardTitle: "Shopkeeper Billing & Customer Dashboard",
-        dashboardSubtitle: "Monitor customer orders, track billing records, and manage store sales",
+        // Store Details provided to Customer
+        storeBadge: "🏪 Verified Kirana Store",
+        storeOwner: "Owner",
+        storePhone: "Contact",
+        storeAddress: "Store Address",
+        storeHours: "Hours",
+        storeUpi: "UPI Payment",
+        
+        // Customer Side Live Order Status Banner
+        liveStatusTitle: "Live Order Status",
+        liveStatusPending: "⏳ Order Placed — Waiting for Shopkeeper Confirmation",
+        liveStatusConfirmed: "✓ Order Confirmed by Shopkeeper! Preparation started.",
+        liveStatusDelivered: "🎉 Order Delivered! Thank you for shopping with us.",
+        liveStatusCancelled: "✗ Order Cancelled",
+        
+        // Shopkeeper Tabs
+        skTabOrders: "📋 Customer Orders & Billing",
+        skTabInventory: "📦 Inventory & Stock",
+        skTabProfile: "🏪 Store & Shopkeeper Details",
+
+        // Store Settings Form
+        storeSettingsTitle: "Shopkeeper & Store Profile",
+        storeSettingsSubtitle: "These details are automatically displayed to your customers in their chat, bills, and WhatsApp invoices.",
+        storeNameLabel: "Store / Shop Name",
+        storeNamePlaceholder: "e.g. Apna Kirana Store",
+        ownerNameLabel: "Shopkeeper / Owner Name",
+        ownerNamePlaceholder: "e.g. Ramesh Kumar",
+        phoneLabel: "Phone / WhatsApp Number",
+        phonePlaceholder: "e.g. +91 98765 43210",
+        addressLabel: "Store Address & Landmark",
+        addressPlaceholder: "e.g. Main Market Road, City Centre, Near Clock Tower",
+        upiLabel: "UPI ID for Digital Payments",
+        upiPlaceholder: "e.g. apnakirana@upi",
+        hoursLabel: "Opening Hours",
+        hoursPlaceholder: "e.g. 8:00 AM - 10:00 PM",
+        saveStoreBtn: "💾 Save Store Details",
+        storeSavedSuccess: "✓ Store details saved and updated live for customers!",
+
+        // Inventory Management
+        inventoryTitle: "Inventory & Stock Management",
+        inventorySubtitle: "Add new items, update prices, and adjust stock quantities in real time",
+        searchInventory: "🔍 Search products by name, brand, or category...",
+        addProductBtn: "+ Add New Product",
+        thProduct: "Product Name",
+        thCategory: "Category",
+        thBrand: "Brand",
+        thPrice: "Price (₹)",
+        thStock: "Available Stock",
+        thStockActions: "Quick Stock Adjust",
+        outOfStockBadge: "Out of Stock",
+        lowStockBadge: "Low Stock",
+        inStockBadge: "In Stock",
+        saveItemChanges: "Save",
+        deleteItem: "Delete",
+        
+        // Add Product Form
+        newProductName: "Product Name (e.g. Aashirvaad Atta 5kg)",
+        newProductCategory: "Category (e.g. atta, oil, dal, dairy)",
+        newProductBrand: "Brand (e.g. Amul, Fortune, Tata)",
+        newProductUnit: "Unit (kg, g, L, ml, packet)",
+        newProductPrice: "Price in ₹",
+        newProductStock: "Initial Stock Count",
+        cancelBtn: "Cancel",
+        saveProductBtn: "Save to Inventory",
+
+        // Dashboard Stats & Filters
+        dashboardTitle: "Customer Billing & Order Management",
+        dashboardSubtitle: "Monitor customer orders, track billing records, and confirm deliveries",
         statTotalRevenue: "Total Revenue",
         statTotalOrders: "Total Orders",
         statTodaySales: "Today's Sales",
         statTodayOrders: "Today's Orders",
         statUniqueCustomers: "Active Customers",
         statConfirmed: "Confirmed Orders",
-        
-        // Dashboard Search & Filters
         searchPlaceholder: "🔍 Search by customer name, phone number, address or product...",
         filterAll: "All Orders",
         filterConfirmed: "Confirmed",
@@ -39,6 +104,7 @@ export const translations = {
         statusDelivered: "Delivered",
         statusPending: "Pending",
         statusCancelled: "Cancelled",
+        confirmOrderBtn: "✓ Confirm Order",
         markDelivered: "Mark Delivered ✓",
         
         // Table Headers
@@ -73,30 +139,95 @@ export const translations = {
         deliveryCharges: "Delivery Charges",
         freeDelivery: "FREE",
         noOrdersFound: "No orders matching your search or filters.",
-        refreshData: "🔄 Refresh Records"
+        refreshData: "🔄 Refresh Data"
     },
     hinglish: {
         appName: "Kirana Order Desk",
         appSubtitle: "AI Voice Assistant & Dukaan Dashboard",
+        customerMode: "🛍️ Grahak Portal (Customer)",
+        shopkeeperMode: "🏪 Dukandar Portal (Shopkeeper)",
         tabChat: "1. Voice & Chat Desk",
         tabSummary: "2. Order Summary",
         tabBill: "3. Final Bill",
-        tabDashboard: "4. Dukandar Dashboard",
+        tabDashboard: "Dukandar Dashboard",
         newOrder: "Naya Order",
         pastOrders: "Purane Orders",
         hideHistory: "History Chhupayein",
         
-        // Dashboard Stats
-        dashboardTitle: "Dukandar Billing & Grahak Dashboard",
-        dashboardSubtitle: "Grahakon ke orders, billing details aur dukaan ki sales track karein",
+        // Store Details provided to Customer
+        storeBadge: "🏪 Dukaan Ki Jankari",
+        storeOwner: "Malik / Dukandar",
+        storePhone: "Mobile No.",
+        storeAddress: "Dukaan Ka Pata",
+        storeHours: "Khulne Ka Samay",
+        storeUpi: "UPI Payment ID",
+        
+        // Customer Side Live Order Status Banner
+        liveStatusTitle: "Live Order Status",
+        liveStatusPending: "⏳ Order Place Hua — Dukandar Ke Confirmation Ka Intezar Hai",
+        liveStatusConfirmed: "✓ Dukandar Ne Order Confirm Kar Diya! Packing shuru ho gayi.",
+        liveStatusDelivered: "🎉 Order Deliver Ho Gaya! Shopping karne ke liye dhanyawad.",
+        liveStatusCancelled: "✗ Order Cancel Ho Gaya",
+        
+        // Shopkeeper Tabs
+        skTabOrders: "📋 Grahak Orders & Billing",
+        skTabInventory: "📦 Inventory & Stock Maal",
+        skTabProfile: "🏪 Dukaan & Malik Profile",
+
+        // Store Settings Form
+        storeSettingsTitle: "Dukandar Aur Dukaan Ki Details",
+        storeSettingsSubtitle: "Yeh details grahakon ko unki chat screen, bill aur WhatsApp invoice par dikhengi.",
+        storeNameLabel: "Dukaan Ka Naam",
+        storeNamePlaceholder: "Jaise: Apna Kirana Store",
+        ownerNameLabel: "Dukandar / Malik Ka Naam",
+        ownerNamePlaceholder: "Jaise: Ramesh Kumar",
+        phoneLabel: "Phone / WhatsApp Number",
+        phonePlaceholder: "Jaise: +91 98765 43210",
+        addressLabel: "Dukaan Ka Pata / Landmark",
+        addressPlaceholder: "Jaise: Main Market Road, City Centre, Ghanta Ghar Ke Paas",
+        upiLabel: "UPI ID (Payment Ke Liye)",
+        upiPlaceholder: "Jaise: apnakirana@upi",
+        hoursLabel: "Dukaan Khulne Ka Samay",
+        hoursPlaceholder: "Jaise: 8:00 AM - 10:00 PM",
+        saveStoreBtn: "💾 Details Save Karein",
+        storeSavedSuccess: "✓ Dukaan ki details save ho gayi aur grahakon ko live dikh rahi hain!",
+
+        // Inventory Management
+        inventoryTitle: "Inventory & Stock Prabandhan",
+        inventorySubtitle: "Naye items jodein, daam badlein aur stock live update karein",
+        searchInventory: "🔍 Item ka naam, brand ya category khojein...",
+        addProductBtn: "+ Naya Samaan Jodein",
+        thProduct: "Product Ka Naam",
+        thCategory: "Category",
+        thBrand: "Brand",
+        thPrice: "Price (₹)",
+        thStock: "Bacha Hua Stock",
+        thStockActions: "Quick Stock Adjust",
+        outOfStockBadge: "Khatam (Out of Stock)",
+        lowStockBadge: "Kam Stock (Low)",
+        inStockBadge: "Available Hai",
+        saveItemChanges: "Save",
+        deleteItem: "Delete",
+        
+        // Add Product Form
+        newProductName: "Item Ka Naam (jaise: Aashirvaad Atta 5kg)",
+        newProductCategory: "Category (atta, oil, dal, dairy, snacks)",
+        newProductBrand: "Brand (Amul, Fortune, Tata)",
+        newProductUnit: "Unit (kg, g, L, ml, packet)",
+        newProductPrice: "Kimat ₹ mein",
+        newProductStock: "Starting Stock Count",
+        cancelBtn: "Cancel",
+        saveProductBtn: "Inventory Mein Jodein",
+
+        // Dashboard Stats & Filters
+        dashboardTitle: "Grahak Billing & Order Management",
+        dashboardSubtitle: "Grahakon ke orders track karein, bills check karein aur confirm karein",
         statTotalRevenue: "Kul Kamai (Total)",
         statTotalOrders: "Kul Orders",
         statTodaySales: "Aaj Ki Bikri",
         statTodayOrders: "Aaj Ke Orders",
         statUniqueCustomers: "Kul Grahak",
         statConfirmed: "Confirmed Orders",
-        
-        // Dashboard Search & Filters
         searchPlaceholder: "🔍 Grahak ka naam, phone number ya item search karein...",
         filterAll: "Sabhi Orders",
         filterConfirmed: "Confirmed",
@@ -107,6 +238,7 @@ export const translations = {
         statusDelivered: "Pahunch Gaya",
         statusPending: "Baki Hai",
         statusCancelled: "Cancel Hua",
+        confirmOrderBtn: "✓ Order Confirm Karein",
         markDelivered: "Delivered Mark Karein ✓",
         
         // Table Headers
@@ -146,15 +278,82 @@ export const translations = {
     hi: {
         appName: "किराना ऑर्डर डेस्क",
         appSubtitle: "एआई वॉयस असिस्टेंट एवं बिलिंग पोर्टल",
+        customerMode: "🛍️ ग्राहक मोड",
+        shopkeeperMode: "🏪 दुकानदार पोर्टल",
         tabChat: "1. वॉयस एवं चैट",
         tabSummary: "2. ऑर्डर सारांश",
         tabBill: "3. फाइनल बिल",
-        tabDashboard: "4. दुकानदार डैशबोर्ड",
+        tabDashboard: "दुकानदार डैशबोर्ड",
         newOrder: "नया ऑर्डर",
         pastOrders: "पुराने ऑर्डर",
         hideHistory: "इतिहास छिपाएं",
         
-        // Dashboard Stats
+        // Store Details provided to Customer
+        storeBadge: "🏪 दुकान का विवरण",
+        storeOwner: "दुकानदार / संचालक",
+        storePhone: "संपर्क नंबर",
+        storeAddress: "दुकान का पता",
+        storeHours: "दुकान का समय",
+        storeUpi: "यूपीआई भुगतान",
+        
+        // Customer Side Live Order Status Banner
+        liveStatusTitle: "ऑर्डर की ताज़ा स्थिति",
+        liveStatusPending: "⏳ ऑर्डर प्राप्त — दुकानदार की पुष्टि की प्रतीक्षा है",
+        liveStatusConfirmed: "✓ दुकानदार द्वारा ऑर्डर पुष्ट! पैकिंग प्रारंभ।",
+        liveStatusDelivered: "🎉 ऑर्डर सफलतापूर्वक डिलीवर! धन्यवाद।",
+        liveStatusCancelled: "✗ ऑर्डर रद्द कर दिया गया",
+        
+        // Shopkeeper Tabs
+        skTabOrders: "📋 ग्राहक ऑर्डर एवं बिलिंग",
+        skTabInventory: "📦 भंडार एवं स्टॉक (Inventory)",
+        skTabProfile: "🏪 दुकान एवं दुकानदार विवरण",
+
+        // Store Settings Form
+        storeSettingsTitle: "दुकान एवं संचालक विवरण",
+        storeSettingsSubtitle: "यह जानकारी ग्राहकों को उनकी चैट, रसीद और व्हाट्सएप इनवॉइस पर प्रदर्शित होगी।",
+        storeNameLabel: "दुकान का नाम",
+        storeNamePlaceholder: "उदा. अपना किराना स्टोर",
+        ownerNameLabel: "संचालक का नाम",
+        ownerNamePlaceholder: "उदा. रमेश कुमार",
+        phoneLabel: "फ़ोन / व्हाट्सएप नंबर",
+        phonePlaceholder: "उदा. +91 98765 43210",
+        addressLabel: "दुकान का पता एवं लैंडमार्क",
+        addressPlaceholder: "उदा. मेन मार्केट रोड, क्लॉक टावर के पास",
+        upiLabel: "यूपीआई आईडी (भुगतान हेतु)",
+        upiPlaceholder: "उदा. apnakirana@upi",
+        hoursLabel: "कार्य समय",
+        hoursPlaceholder: "उदा. सुबह 8:00 से रात्रि 10:00 तक",
+        saveStoreBtn: "💾 विवरण सहेजें",
+        storeSavedSuccess: "✓ दुकान का विवरण सहेज लिया गया और ग्राहकों को लाइव दिख रहा है!",
+
+        // Inventory Management
+        inventoryTitle: "स्टॉक एवं सामग्री प्रबंधन",
+        inventorySubtitle: "नई वस्तुएं जोड़ें, मूल्य बदलें और वास्तविक समय में स्टॉक नियंत्रित करें",
+        searchInventory: "🔍 नाम, ब्रांड या श्रेणी से वस्तु खोजें...",
+        addProductBtn: "+ नई वस्तु जोड़ें",
+        thProduct: "वस्तु का नाम",
+        thCategory: "श्रेणी",
+        thBrand: "ब्रांड",
+        thPrice: "मूल्य (₹)",
+        thStock: "उपलब्ध स्टॉक",
+        thStockActions: "त्वरित स्टॉक बदलाव",
+        outOfStockBadge: "स्टॉक समाप्त",
+        lowStockBadge: "अल्प स्टॉक",
+        inStockBadge: "उपलब्ध",
+        saveItemChanges: "सहेजें",
+        deleteItem: "हटाएं",
+        
+        // Add Product Form
+        newProductName: "वस्तु का नाम (उदा. आशीर्वाद आटा 5kg)",
+        newProductCategory: "श्रेणी (आटा, तेल, दाल, डेयरी)",
+        newProductBrand: "ब्रांड (अमूल, फॉर्च्यून, टाटा)",
+        newProductUnit: "इकाई (kg, g, L, ml, पैकेट)",
+        newProductPrice: "मूल्य ₹ में",
+        newProductStock: "प्रारंभिक स्टॉक संख्या",
+        cancelBtn: "रद्द करें",
+        saveProductBtn: "स्टॉक में जोड़ें",
+
+        // Dashboard Stats & Filters
         dashboardTitle: "दुकानदार बिलिंग एवं ग्राहक डैशबोर्ड",
         dashboardSubtitle: "ग्राहकों के ऑर्डर, बिलिंग विवरण और दैनिक बिक्री की निगरानी करें",
         statTotalRevenue: "कुल राजस्व (बिक्री)",
@@ -163,8 +362,6 @@ export const translations = {
         statTodayOrders: "आज के ऑर्डर",
         statUniqueCustomers: "सक्रिय ग्राहक",
         statConfirmed: "पुष्टि किए गए ऑर्डर",
-        
-        // Dashboard Search & Filters
         searchPlaceholder: "🔍 ग्राहक का नाम, फोन नंबर, पता या सामान खोजें...",
         filterAll: "सभी ऑर्डर",
         filterConfirmed: "पुष्ट (Confirmed)",
@@ -175,6 +372,7 @@ export const translations = {
         statusDelivered: "सफल डिलीवरी",
         statusPending: "प्रतीक्षारत",
         statusCancelled: "रद्द",
+        confirmOrderBtn: "✓ ऑर्डर पुष्ट करें",
         markDelivered: "डिलीवरी पूर्ण करें ✓",
         
         // Table Headers
@@ -214,15 +412,82 @@ export const translations = {
     mr: {
         appName: "किराणा ऑर्डर डेस्क",
         appSubtitle: "एआय व्हॉइस असिस्टंट आणि दुकानदार पोर्टल",
+        customerMode: "🛍️ ग्राहक मोड",
+        shopkeeperMode: "🏪 दुकानदार पोर्टल",
         tabChat: "1. व्हॉइस व चॅट डेस्क",
         tabSummary: "2. ऑर्डर सारांश",
         tabBill: "3. अंतिम बिल",
-        tabDashboard: "4. दुकानदार डॅशबोर्ड",
+        tabDashboard: "दुकानदार डॅशबोर्ड",
         newOrder: "नवीन ऑर्डर",
         pastOrders: "मागील ऑर्डर्स",
         hideHistory: "इतिहास लपवा",
         
-        // Dashboard Stats
+        // Store Details provided to Customer
+        storeBadge: "🏪 दुकानाची माहिती",
+        storeOwner: "दुकानदार / मालक",
+        storePhone: "संपर्क क्रमांक",
+        storeAddress: "दुकानाचा पत्ता",
+        storeHours: "वेळ",
+        storeUpi: "UPI पेमेंट",
+        
+        // Customer Side Live Order Status Banner
+        liveStatusTitle: "ऑर्डर स्थिती",
+        liveStatusPending: "⏳ ऑर्डर नोंदवली — दुकानदाराच्या पुष्टीची प्रतीक्षा आहे",
+        liveStatusConfirmed: "✓ दुकानदाराने ऑर्डर निश्चित केली! पॅकिंग सुरू.",
+        liveStatusDelivered: "🎉 ऑर्डर वितरित केली! धन्यवाद.",
+        liveStatusCancelled: "✗ ऑर्डर रद्द झाली",
+        
+        // Shopkeeper Tabs
+        skTabOrders: "📋 ग्राहक ऑर्डर्स व बिलिंग",
+        skTabInventory: "📦 मालसाठा व इन्व्हेंटरी",
+        skTabProfile: "🏪 दुकान व मालक प्रोफाइल",
+
+        // Store Settings Form
+        storeSettingsTitle: "दुकान व मालक माहिती",
+        storeSettingsSubtitle: "ही माहिती ग्राहकांना त्यांच्या चॅट, बिल आणि व्हॉट्सॲप इनव्हॉइसवर दिसेल.",
+        storeNameLabel: "दुकानाचे नाव",
+        storeNamePlaceholder: "उदा. अपना किराणा स्टोअर",
+        ownerNameLabel: "मालकाचे नाव",
+        ownerNamePlaceholder: "उदा. रमेश कुमार",
+        phoneLabel: "फोन / व्हॉट्सॲप नंबर",
+        phonePlaceholder: "उदा. +91 98765 43210",
+        addressLabel: "दुकानाचा पत्ता",
+        addressPlaceholder: "उदा. मेन मार्केट रोड, क्लॉक टॉवरजवळ",
+        upiLabel: "UPI आयडी (पेमेंटसाठी)",
+        upiPlaceholder: "उदा. apnakirana@upi",
+        hoursLabel: "वेळ",
+        hoursPlaceholder: "उदा. सकाळी ८:०० ते रात्री १०:००",
+        saveStoreBtn: "💾 माहिती सेव्ह करा",
+        storeSavedSuccess: "✓ दुकानाची माहिती सेव्ह झाली आणि ग्राहकांना लाइव्ह दिसत आहे!",
+
+        // Inventory Management
+        inventoryTitle: "इन्व्हेंटरी व स्टॉक व्यवस्थापन",
+        inventorySubtitle: "नवीन वस्तू जोडा, दर बदला आणि उपलब्ध साठा तात्काळ अद्ययावत करा",
+        searchInventory: "🔍 वस्तूचे नाव, ब्रँड किंवा प्रकार शोधा...",
+        addProductBtn: "+ नवीन वस्तू जोडा",
+        thProduct: "वस्तूचे नाव",
+        thCategory: "प्रकार",
+        thBrand: "ब्रँड",
+        thPrice: "किंमत (₹)",
+        thStock: "शिल्लक साठा",
+        thStockActions: "साठा बदल",
+        outOfStockBadge: "साठा संपला",
+        lowStockBadge: "कमी साठा",
+        inStockBadge: "उपलब्ध",
+        saveItemChanges: "सेव्ह",
+        deleteItem: "हटवा",
+        
+        // Add Product Form
+        newProductName: "वस्तूचे नाव (उदा. आशीर्वाद आटा 5kg)",
+        newProductCategory: "प्रकार (आटा, तेल, डाळ, दुग्धजन्य)",
+        newProductBrand: "ब्रँड (अमूल, फॉर्च्यून, टाटा)",
+        newProductUnit: "एकक (kg, g, L, ml, पाकीट)",
+        newProductPrice: "किंमत ₹ मध्ये",
+        newProductStock: "प्रारंभिक साठा संख्या",
+        cancelBtn: "रद्द करा",
+        saveProductBtn: "इन्व्हेंटरीमध्ये जोडा",
+
+        // Dashboard Stats & Filters
         dashboardTitle: "दुकानदार बिलिंग व ग्राहक डॅशबोर्ड",
         dashboardSubtitle: "ग्राहकांच्या ऑर्डर्स, बिलिंग माहिती व दुकानाची विक्री पहा",
         statTotalRevenue: "एकूण महसूल (विक्री)",
@@ -231,8 +496,6 @@ export const translations = {
         statTodayOrders: "आजच्या ऑर्डर्स",
         statUniqueCustomers: "ग्राहक संख्या",
         statConfirmed: "निश्चित ऑर्डर्स",
-        
-        // Dashboard Search & Filters
         searchPlaceholder: "🔍 ग्राहकाचे नाव, फोन नंबर किंवा माल शोधा...",
         filterAll: "सर्व ऑर्डर्स",
         filterConfirmed: "निश्चित",
@@ -243,6 +506,7 @@ export const translations = {
         statusDelivered: "वितरित",
         statusPending: "प्रलंबित",
         statusCancelled: "रद्द",
+        confirmOrderBtn: "✓ ऑर्डर निश्चित करा",
         markDelivered: "वितरण पूर्ण करा ✓",
         
         // Table Headers
@@ -282,15 +546,82 @@ export const translations = {
     gu: {
         appName: "કિરાણા ઓર્ડર ડેસ્ક",
         appSubtitle: "AI વૉઇસ સહાયક અને દુકાનદાર પોર્ટલ",
+        customerMode: "🛍️ ગ્રાહક મોડ",
+        shopkeeperMode: "🏪 દુકાનદાર પોર્ટલ",
         tabChat: "1. વૉઇસ અને ચેટ ડેસ્ક",
         tabSummary: "2. ઓર્ડર સારાંશ",
         tabBill: "3. ફાઇનલ બિલ",
-        tabDashboard: "4. દુકાનદાર ડેશબોર્ડ",
+        tabDashboard: "દુકાનદાર ડેશબોર્ડ",
         newOrder: "નવો ઓર્ડર",
         pastOrders: "પાછલા ઓર્ડર્સ",
         hideHistory: "ઇતિહાસ છુપાવો",
         
-        // Dashboard Stats
+        // Store Details provided to Customer
+        storeBadge: "🏪 દુકાનની વિગત",
+        storeOwner: "દુકાનદાર / માલિક",
+        storePhone: "સંપર્ક નંબર",
+        storeAddress: "દુકાનનું સરનામું",
+        storeHours: "સમય",
+        storeUpi: "UPI ચૂકવણી",
+        
+        // Customer Side Live Order Status Banner
+        liveStatusTitle: "ઓર્ડરની સ્થિતિ",
+        liveStatusPending: "⏳ ઓર્ડર નોંધાયો — દુકાનદારની પુષ્ટિની રાહ જોવાઈ રહી છે",
+        liveStatusConfirmed: "✓ દુકાનદારે ઓર્ડર કન્ફર્મ કર્યો! પેકિંગ શરૂ.",
+        liveStatusDelivered: "🎉 ઓર્ડર ડિલિવર થયો! આભાર.",
+        liveStatusCancelled: "✗ ઓર્ડર રદ થયો",
+        
+        // Shopkeeper Tabs
+        skTabOrders: "📋 ગ્રાહક ઓર્ડર્સ અને બિલિંગ",
+        skTabInventory: "📦 સ્ટોક અને ઇન્વેન્ટરી",
+        skTabProfile: "🏪 દુકાન અને માલિક પ્રોફાઇલ",
+
+        // Store Settings Form
+        storeSettingsTitle: "દુકાન અને માલિકની વિગતો",
+        storeSettingsSubtitle: "આ વિગતો ગ્રાહકોને તેમની ચેટ, બિલ અને વોટ્સએપ ઇન્વોઇસ પર દેખાશે.",
+        storeNameLabel: "દુકાનનું નામ",
+        storeNamePlaceholder: "દા.ત. અપના કિરાણા સ્ટોર",
+        ownerNameLabel: "માલિકનું નામ",
+        ownerNamePlaceholder: "દા.ત. રમેશ કુમાર",
+        phoneLabel: "ફોન / વોટ્સએપ નંબર",
+        phonePlaceholder: "દા.ત. +91 98765 43210",
+        addressLabel: "દુકાનનું સરનામું",
+        addressPlaceholder: "દા.ત. મેઇન માર્કેટ રોડ, ક્લોક ટાવર પાસે",
+        upiLabel: "UPI આઈડી (ચૂકવણી માટે)",
+        upiPlaceholder: "દા.ત. apnakirana@upi",
+        hoursLabel: "સમય",
+        hoursPlaceholder: "દા.ત. સવારે ૮:૦૦ થી રાત્રે ૧૦:૦૦",
+        saveStoreBtn: "💾 વિગતો સેવ કરો",
+        storeSavedSuccess: "✓ દુકાનની વિગતો સેવ થઈ અને ગ્રાહકોને લાઇવ દેખાય છે!",
+
+        // Inventory Management
+        inventoryTitle: "ઇન્વેન્ટરી અને સ્ટોક મેનેજમેન્ટ",
+        inventorySubtitle: "નવી વસ્તુઓ ઉમેરો, ભાવ બદલો અને સ્ટોકનું લાઈવ નિયંત્રણ કરો",
+        searchInventory: "🔍 નામ, બ્રાન્ડ અથવા કેટેગરીથી શોધો...",
+        addProductBtn: "+ નવો સામાન ઉમેરો",
+        thProduct: "સામાનનું નામ",
+        thCategory: "કેટેગરી",
+        thBrand: "બ્રાન્ડ",
+        thPrice: "કિંમત (₹)",
+        thStock: "ઉપલબ્ધ સ્ટોક",
+        thStockActions: "સ્ટોક ફેરફાર",
+        outOfStockBadge: "સ્ટોક ખાલી",
+        lowStockBadge: "ઓછો સ્ટોક",
+        inStockBadge: "ઉપલબ્ધ",
+        saveItemChanges: "સેવ",
+        deleteItem: "કાઢી નાખો",
+        
+        // Add Product Form
+        newProductName: "સામાનનું નામ (દા.ત. આશીર્વાદ લોટ 5kg)",
+        newProductCategory: "કેટેગરી (લોટ, તેલ, દાળ, ડેરી)",
+        newProductBrand: "બ્રાન્ડ (અમૂલ, ફોર્ચ્યુન, ટાટા)",
+        newProductUnit: "એકમ (kg, g, L, ml, પેકેટ)",
+        newProductPrice: "કિંમત ₹ માં",
+        newProductStock: "શરૂઆતનો સ્ટોક",
+        cancelBtn: "રદ કરો",
+        saveProductBtn: "ઇન્વેન્ટરીમાં ઉમેરો",
+
+        // Dashboard Stats & Filters
         dashboardTitle: "દુકાનદાર બિલિંગ અને ગ્રાહક ડેશબોર્ડ",
         dashboardSubtitle: "ગ્રાહકોના ઓર્ડર, બિલિંગ વિગતો અને દૈનિક વેચાણની નોંધ રાખો",
         statTotalRevenue: "કુલ આવક (વેચાણ)",
@@ -299,8 +630,6 @@ export const translations = {
         statTodayOrders: "આજના ઓર્ડર",
         statUniqueCustomers: "કુલ ગ્રાહકો",
         statConfirmed: "કન્ફર્મ ઓર્ડર્સ",
-        
-        // Dashboard Search & Filters
         searchPlaceholder: "🔍 ગ્રાહકનું નામ, ફોન નંબર અથવા સામાન શોધો...",
         filterAll: "બધા ઓર્ડર્સ",
         filterConfirmed: "કન્ફર્મ",
@@ -311,6 +640,7 @@ export const translations = {
         statusDelivered: "ડિલિવર થયેલ",
         statusPending: "બાકી",
         statusCancelled: "રદ",
+        confirmOrderBtn: "✓ ઓર્ડર કન્ફર્મ કરો",
         markDelivered: "ડિલિવરી પૂર્ણ કરો ✓",
         
         // Table Headers

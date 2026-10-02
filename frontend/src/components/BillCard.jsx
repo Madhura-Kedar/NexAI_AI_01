@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { translations } from "../utils/translations"
 
-export default function BillCard({ bill, state, orderId, lang = "en", onNavigateToSummary, onReset }) {
+export default function BillCard({ bill, state, orderId, lang = "en", storeProfile, onNavigateToSummary, onReset }) {
     const t = translations[lang] || translations.en
     const isConfirmed = state === "confirmed"
     const [copied, setCopied] = useState(false)
@@ -43,8 +43,15 @@ export default function BillCard({ bill, state, orderId, lang = "en", onNavigate
 
     const handleWhatsApp = () => {
         if (!bill) return
-        let text = `*APNA KIRANA STORE - BILL*\n`
+        const sName = storeProfile?.store_name || "APNA KIRANA STORE"
+        let text = `*${sName} - BILL*\n`
         text += `Date: ${new Date().toLocaleDateString("en-IN")}\n`
+        if (storeProfile?.phone) text += `Store Contact: ${storeProfile.phone}\n`
+        if (storeProfile?.address) text += `Store Address: ${storeProfile.address}\n`
+        text += `---------------------------\n`
+        text += `*Customer:* ${customerName || "Walk-in Customer"}\n`
+        if (customerPhone) text += `*Phone:* ${customerPhone}\n`
+        if (customerAddress) text += `*Address:* ${customerAddress}\n`
         text += `---------------------------\n`
         text += `*Customer:* ${customerName || "Walk-in Customer"}\n`
         if (customerPhone) text += `*Phone:* ${customerPhone}\n`
@@ -364,13 +371,13 @@ export default function BillCard({ bill, state, orderId, lang = "en", onNavigate
                     marginBottom: 16
                 }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: 1 }}>
-                        🏪 APNA KIRANA STORE
+                        🏪 {storeProfile?.store_name ? storeProfile.store_name.toUpperCase() : "APNA KIRANA STORE"}
                     </div>
                     <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
-                        Main Market Road, City Centre · Ph: +91 98765 43210
+                        {storeProfile?.address || "Main Market Road, City Centre"} · Ph: {storeProfile?.phone || "+91 98765 43210"}
                     </div>
                     <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
-                        GSTIN: 27AABCS1429B1Z · Cash / UPI Counter
+                        Proprietor: {storeProfile?.owner_name || "Store Owner"} · UPI: {storeProfile?.upi_id || "apnakirana@upi"} · GSTIN: {storeProfile?.gstin || "27AABCS1429B1Z"}
                     </div>
 
                     <div style={{

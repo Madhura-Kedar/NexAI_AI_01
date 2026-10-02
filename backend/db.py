@@ -57,6 +57,23 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(order_id) REFERENCES orders(id)
         );
+
+        CREATE TABLE IF NOT EXISTS store_settings (
+            id INTEGER PRIMARY KEY,
+            store_name TEXT DEFAULT 'Apna Kirana Store',
+            owner_name TEXT DEFAULT 'Ramesh Kumar',
+            phone TEXT DEFAULT '+91 98765 43210',
+            address TEXT DEFAULT 'Main Market Road, City Centre, Near Clock Tower',
+            upi_id TEXT DEFAULT 'apnakirana@upi',
+            gstin TEXT DEFAULT '27AABCS1429B1Z',
+            opening_hours TEXT DEFAULT '8:00 AM - 10:00 PM'
+        );
+    """)
+
+    # Ensure default store settings row exists
+    cursor.execute("""
+        INSERT OR IGNORE INTO store_settings (id, store_name, owner_name, phone, address, upi_id, gstin, opening_hours)
+        VALUES (1, 'Apna Kirana Store', 'Ramesh Kumar', '+91 98765 43210', 'Main Market Road, City Centre, Near Clock Tower', 'apnakirana@upi', '27AABCS1429B1Z', '8:00 AM - 10:00 PM')
     """)
 
     # Safe migration: add chat_messages column if it doesn't exist yet

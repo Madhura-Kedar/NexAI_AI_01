@@ -8,6 +8,7 @@ import { translations, LANGUAGES } from "./utils/translations"
 
 const STORAGE_KEY = "kirana_active_session"
 const LANG_STORAGE_KEY = "kirana_selected_lang"
+const ROLE_STORAGE_KEY = "kirana_active_role"
 
 function loadSession() {
     try {
@@ -32,8 +33,17 @@ function clearSession() {
 const INIT_MSG = [{ role: "bot", text: "Namaste! 🙏 Apna order boliye ya likhiye — Hindi ya English mein." }]
 
 export default function App() {
-    const [activeTab, setActiveTab] = useState("chat")
-    const [sidebarOpen, setSidebarOpen] = useState(true)
+    // Mode: "customer" vs "shopkeeper"
+    const [role, setRole] = useState(() => {
+        try {
+            return localStorage.getItem(ROLE_STORAGE_KEY) || "customer"
+        } catch {
+            return "customer"
+        }
+    })
+
+    const [activeTab, setActiveTab] = useState("chat") // "chat", "summary", "bill"
+    const [sidebarOpen, setSidebarOpen] = useState(false)
     const [lang, setLang] = useState(() => {
         try {
             return localStorage.getItem(LANG_STORAGE_KEY) || "en"
@@ -41,6 +51,41 @@ export default function App() {
             return "en"
         }
     })
+
+    // Store & Shopkeeper details
+    const [storeProfile, setStoreProfile] = useState({
+        store_name: "Apna Kirana Store",
+        owner_name: "Ramesh Kumar",
+        phone: "+91 98765 43210",
+        address: "Main Market Road, City Centre, Near Clock Tower",
+        upi_id: "apnakirana@upi",
+        gstin: "27AABCS1429B1Z",
+        opening_hours: "8:00 AM - 10:00 PM"
+    })
+
+    const fetchStoreProfile = async () => {
+        try {
+            const res = await fetch("http://localhost:5000/api/store")
+            if (res.ok) {
+                const data = await res.json()
+                setStoreProfile(data)
+            }
+        } catch (e) {
+            console.error("Failed to load store profile", e)
+        }
+    }
+
+    useEffect(() => {
+        fetchStoreProfile()
+    }, [])
+
+    const handleRoleChange = (newRole) => {
+        setRole(newRole)
+        try {
+            localStorage.setItem(ROLE_STORAGE_KEY, newRole)
+        } catch {}
+        fetchStoreProfile()
+    }
 
     const handleLangChange = (newLang) => {
         setLang(newLang)
@@ -51,25 +96,25 @@ export default function App() {
 
     const t = translations[lang] || translations.en
 
-    // Restore session from localStorage on first mount
+    // Restore customer session
     const saved = loadSession()
     const [conversationId, setConversationId] = useState(saved?.conversationId || null)
     const [messages, setMessages] = useState(saved?.messages || INIT_MSG)
     const [confirmed, setConfirmed] = useState(saved?.confirmed || [])
     const [pending, setPending] = useState(saved?.pending || [])
     const [bill, setBill] = useState(saved?.bill || null)
-    const [deliveryNote, setDeliveryNote] = useState(saved?.deliveryNote || "")
     const [state, setState] = useState(saved?.state || "active")
     const [loading, setLoading] = useState(false)
+    const [orderStatus, setOrderStatus] = useState(saved?.orderStatus || "pending") // "pending", "confirmed", "delivered", "cancelled"
 
-    // Persist session to localStorage whenever key state changes
+    // Persist session to localStorage
     useEffect(() => {
         if (conversationId || messages.length > 1) {
-            saveSession({ conversationId, messages, confirmed, pending, bill, deliveryNote, state })
+            saveSession({ conversationId, messages, confirmed, pending, bill, state, orderStatus })
         }
-    }, [conversationId, messages, confirmed, pending, bill, deliveryNote, state])
+    }, [conversationId, messages, confirmed, pending, bill, state, orderStatus])
 
-    // Also sync messages to backend DB so sidebar can show full chat history per order
+    // Sync messages to backend DB
     useEffect(() => {
         if (conversationId && messages.length > 1) {
             fetch(`http://localhost:5000/api/conversation/${conversationId}/messages`, {
@@ -79,6 +124,30 @@ export default function App() {
             }).catch(() => {})
         }
     }, [conversationId, messages])
+
+    // ── Real-Time Order Status Polling for Customer Side ─────────────────────
+    // When the shopkeeper confirms or updates the order on their dashboard,
+    // the customer's UI instantly receives and displays the update!
+    useEffect(() => {
+        if (!conversationId) return
+
+        const interval = setInterval(async () => {
+            try {
+                const res = await fetch(`http://localhost:5000/api/orders/${conversationId}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data && data.status && data.status !== orderStatus) {
+                        setOrderStatus(data.status)
+                        if (data.status === "confirmed" && state !== "confirmed") {
+                            setState("confirmed")
+                        }
+                    }
+                }
+            } catch {}
+        }, 3000)
+
+        return () => clearInterval(interval)
+    }, [conversationId, orderStatus, state])
 
     const sendMessage = async (text) => {
         setMessages(prev => [...prev, { role: "user", text }])
@@ -101,19 +170,18 @@ export default function App() {
             setPending(data.pending || [])
             setBill(data.final_bill || data.bill_preview || null)
             setState(data.state || "active")
-            if (data.delivery_note) setDeliveryNote(data.delivery_note)
 
             setMessages(prev => [...prev, { role: "bot", text: data.bot_reply }])
         } catch (err) {
             console.error("Order error", err)
-            setMessages(prev => [...prev, { role: "bot", text: "Sorry, kuch technical error aaya. Dobara try karein." }])
+            setMessages(prev => [...prev, { role: "bot", text: "Sorry, technical error. Please try again." }])
         } finally {
             setLoading(false)
         }
     }
 
     const resetOrder = () => {
-        if (confirmed.length > 0 && !window.confirm("Kya aap naya order start karna chahte hain? Current order reset ho jayega.")) {
+        if (confirmed.length > 0 && !window.confirm("Start a new order? Current order will be reset.")) {
             return
         }
         clearSession()
@@ -122,8 +190,8 @@ export default function App() {
         setConfirmed([])
         setPending([])
         setBill(null)
-        setDeliveryNote("")
         setState("active")
+        setOrderStatus("pending")
         setActiveTab("chat")
     }
 
@@ -145,28 +213,28 @@ export default function App() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "0 24px",
+                padding: "0 20px",
                 flexShrink: 0,
                 boxShadow: "0 2px 10px rgba(0,0,0,0.3)",
-                zIndex: 10
+                zIndex: 20
             }}>
-                {/* Brand Logo & Store status */}
+                {/* Brand & Store Identity */}
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{
                         width: 36,
                         height: 36,
                         borderRadius: 10,
-                        background: "linear-gradient(135deg, #25D366 0%, #128C7E 100%)",
+                        background: role === "shopkeeper" ? "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)" : "linear-gradient(135deg, #25D366 0%, #128C7E 100%)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         fontSize: 18
                     }}>
-                        🛒
+                        {role === "shopkeeper" ? "🏪" : "🛒"}
                     </div>
                     <div>
                         <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
-                            <span>{t.appName}</span>
+                            <span>{storeProfile.store_name || t.appName}</span>
                             <span style={{
                                 width: 8,
                                 height: 8,
@@ -176,151 +244,138 @@ export default function App() {
                                 boxShadow: "0 0 8px #25D366"
                             }} />
                         </div>
-                        <div style={{ fontSize: 11, color: "#64748b" }}>{t.appSubtitle}</div>
+                        <div style={{ fontSize: 11, color: "#64748b" }}>
+                            {role === "shopkeeper" ? `Shopkeeper Portal · ${storeProfile.owner_name}` : `AI Voice Kirana · Call ${storeProfile.phone}`}
+                        </div>
                     </div>
                 </div>
 
-                {/* Separate Pages Navigation Tabs */}
-                <nav style={{
-                    display: "flex",
-                    background: "#0b0d11",
-                    border: "1px solid #1e2632",
-                    borderRadius: 12,
-                    padding: 4,
-                    gap: 4
-                }}>
-                    {/* Tab 1: Voice & Chat Desk */}
-                    <button
-                        onClick={() => setActiveTab("chat")}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            padding: "8px 16px",
-                            borderRadius: 8,
-                            border: "none",
-                            background: activeTab === "chat" ? "#1f2937" : "transparent",
-                            color: activeTab === "chat" ? "#25D366" : "#94a3b8",
-                            fontWeight: activeTab === "chat" ? 700 : 500,
-                            fontSize: 13,
-                            cursor: "pointer",
-                            transition: "all 0.15s ease"
-                        }}
-                    >
-                        <span>💬</span>
-                        <span>{t.tabChat}</span>
-                    </button>
+                {/* Navigation Controls: Customer Mode Tabs */}
+                {role === "customer" && (
+                    <nav style={{
+                        display: "flex",
+                        background: "#0b0d11",
+                        border: "1px solid #1e2632",
+                        borderRadius: 12,
+                        padding: 4,
+                        gap: 4
+                    }}>
+                        <button
+                            onClick={() => setActiveTab("chat")}
+                            style={{
+                                display: "flex", alignItems: "center", gap: 6,
+                                padding: "8px 16px", borderRadius: 8, border: "none",
+                                background: activeTab === "chat" ? "#1f2937" : "transparent",
+                                color: activeTab === "chat" ? "#25D366" : "#94a3b8",
+                                fontWeight: activeTab === "chat" ? 700 : 500, fontSize: 13, cursor: "pointer"
+                            }}
+                        >
+                            <span>💬</span>
+                            <span>{t.tabChat}</span>
+                        </button>
 
-                    {/* Tab 2: Order Summary */}
-                    <button
-                        onClick={() => setActiveTab("summary")}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            padding: "8px 16px",
-                            borderRadius: 8,
-                            border: "none",
-                            background: activeTab === "summary" ? "#1f2937" : "transparent",
-                            color: activeTab === "summary" ? "#25D366" : "#94a3b8",
-                            fontWeight: activeTab === "summary" ? 700 : 500,
-                            fontSize: 13,
-                            cursor: "pointer",
-                            transition: "all 0.15s ease"
-                        }}
-                    >
-                        <span>📦</span>
-                        <span>{t.tabSummary}</span>
-                        {confirmed.length > 0 && (
-                            <span style={{
-                                background: "#25D366",
-                                color: "#000",
-                                fontSize: 11,
-                                fontWeight: 800,
-                                borderRadius: 10,
-                                padding: "1px 7px",
-                                marginLeft: 2
-                            }}>
-                                {confirmed.length}
-                            </span>
-                        )}
-                        {pending.length > 0 && (
-                            <span style={{
-                                background: "#f59e0b",
-                                color: "#000",
-                                fontSize: 11,
-                                fontWeight: 800,
-                                borderRadius: 10,
-                                padding: "1px 7px",
-                                marginLeft: 2
-                            }}>
-                                {pending.length} ⚠️
-                            </span>
-                        )}
-                    </button>
+                        <button
+                            onClick={() => setActiveTab("summary")}
+                            style={{
+                                display: "flex", alignItems: "center", gap: 6,
+                                padding: "8px 16px", borderRadius: 8, border: "none",
+                                background: activeTab === "summary" ? "#1f2937" : "transparent",
+                                color: activeTab === "summary" ? "#25D366" : "#94a3b8",
+                                fontWeight: activeTab === "summary" ? 700 : 500, fontSize: 13, cursor: "pointer"
+                            }}
+                        >
+                            <span>📦</span>
+                            <span>{t.tabSummary}</span>
+                            {confirmed.length > 0 && (
+                                <span style={{ background: "#25D366", color: "#000", fontSize: 11, fontWeight: 800, borderRadius: 10, padding: "1px 6px" }}>
+                                    {confirmed.length}
+                                </span>
+                            )}
+                            {pending.length > 0 && (
+                                <span style={{ background: "#f59e0b", color: "#000", fontSize: 11, fontWeight: 800, borderRadius: 10, padding: "1px 6px" }}>
+                                    {pending.length} ⚠️
+                                </span>
+                            )}
+                        </button>
 
-                    {/* Tab 3: Final Bill */}
-                    <button
-                        onClick={() => setActiveTab("bill")}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            padding: "8px 16px",
-                            borderRadius: 8,
-                            border: "none",
-                            background: activeTab === "bill" ? "#1f2937" : "transparent",
-                            color: activeTab === "bill" ? "#25D366" : "#94a3b8",
-                            fontWeight: activeTab === "bill" ? 700 : 500,
-                            fontSize: 13,
-                            cursor: "pointer",
-                            transition: "all 0.15s ease"
-                        }}
-                    >
-                        <span>🧾</span>
-                        <span>{t.tabBill}</span>
-                        {bill && (
-                            <span style={{
-                                background: state === "confirmed" ? "#0d331e" : "#2a1e0b",
-                                color: state === "confirmed" ? "#25D366" : "#f59e0b",
-                                border: state === "confirmed" ? "1px solid #1c6136" : "1px solid #573a0e",
-                                fontSize: 11,
-                                fontWeight: 800,
-                                borderRadius: 8,
-                                padding: "1px 7px"
-                            }}>
-                                ₹{bill.grand_total}
-                            </span>
-                        )}
-                    </button>
+                        <button
+                            onClick={() => setActiveTab("bill")}
+                            style={{
+                                display: "flex", alignItems: "center", gap: 6,
+                                padding: "8px 16px", borderRadius: 8, border: "none",
+                                background: activeTab === "bill" ? "#1f2937" : "transparent",
+                                color: activeTab === "bill" ? "#25D366" : "#94a3b8",
+                                fontWeight: activeTab === "bill" ? 700 : 500, fontSize: 13, cursor: "pointer"
+                            }}
+                        >
+                            <span>🧾</span>
+                            <span>{t.tabBill}</span>
+                            {bill && (
+                                <span style={{
+                                    background: state === "confirmed" ? "#0d331e" : "#2a1e0b",
+                                    color: state === "confirmed" ? "#25D366" : "#f59e0b",
+                                    fontSize: 11, fontWeight: 800, borderRadius: 6, padding: "1px 6px"
+                                }}>
+                                    ₹{bill.grand_total}
+                                </span>
+                            )}
+                        </button>
+                    </nav>
+                )}
 
-                    {/* Tab 4: Shopkeeper Dashboard */}
-                    <button
-                        onClick={() => setActiveTab("dashboard")}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            padding: "8px 16px",
-                            borderRadius: 8,
-                            border: "none",
-                            background: activeTab === "dashboard" ? "linear-gradient(135deg, #1e3a2b 0%, #15291e 100%)" : "transparent",
-                            color: activeTab === "dashboard" ? "#4ade80" : "#94a3b8",
-                            borderBottom: activeTab === "dashboard" ? "2px solid #25D366" : "none",
-                            fontWeight: activeTab === "dashboard" ? 700 : 500,
-                            fontSize: 13,
-                            cursor: "pointer",
-                            transition: "all 0.15s ease"
-                        }}
-                    >
-                        <span>📊</span>
-                        <span>{t.tabDashboard}</span>
-                    </button>
-                </nav>
-
-                {/* Right controls */}
+                {/* Right controls: Role Switcher & Multi-Lingual */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {/* Global Multi-Lingual Language Dropdown */}
+                    {/* Role Switcher Toggle */}
+                    <div style={{
+                        display: "flex",
+                        background: "#0c1016",
+                        border: "1px solid #233142",
+                        borderRadius: 10,
+                        padding: 3,
+                        gap: 2
+                    }}>
+                        <button
+                            onClick={() => handleRoleChange("customer")}
+                            style={{
+                                background: role === "customer" ? "#1b3323" : "transparent",
+                                color: role === "customer" ? "#4ade80" : "#94a3b8",
+                                border: role === "customer" ? "1px solid #1c6136" : "none",
+                                borderRadius: 8,
+                                padding: "6px 12px",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 5
+                            }}
+                        >
+                            <span>🛍️</span>
+                            <span>Customer</span>
+                        </button>
+
+                        <button
+                            onClick={() => handleRoleChange("shopkeeper")}
+                            style={{
+                                background: role === "shopkeeper" ? "#1e293b" : "transparent",
+                                color: role === "shopkeeper" ? "#60a5fa" : "#94a3b8",
+                                border: role === "shopkeeper" ? "1px solid #3b82f6" : "none",
+                                borderRadius: 8,
+                                padding: "6px 12px",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 5
+                            }}
+                        >
+                            <span>🏪</span>
+                            <span>Shopkeeper</span>
+                        </button>
+                    </div>
+
+                    {/* Language Selector */}
                     <div style={{
                         display: "flex",
                         alignItems: "center",
@@ -352,121 +407,178 @@ export default function App() {
                         </select>
                     </div>
 
-                    <button
-                        onClick={resetOrder}
-                        title="Start a fresh new customer order"
-                        style={{
-                            background: "#18202a",
-                            border: "1px solid #2b3644",
-                            color: "#cbd5e1",
-                            padding: "8px 14px",
-                            borderRadius: 10,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            transition: "all 0.15s ease"
-                        }}
-                        onMouseOver={(e) => e.currentTarget.style.borderColor = "#475569"}
-                        onMouseOut={(e) => e.currentTarget.style.borderColor = "#2b3644"}
-                    >
-                        <span>➕</span>
-                        <span>{t.newOrder}</span>
-                    </button>
+                    {role === "customer" && (
+                        <>
+                            <button
+                                onClick={resetOrder}
+                                title="Start a fresh new customer order"
+                                style={{
+                                    background: "#18202a", border: "1px solid #2b3644", color: "#cbd5e1",
+                                    padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer"
+                                }}
+                            >
+                                ➕ {t.newOrder}
+                            </button>
 
-                    <button
-                        onClick={() => setSidebarOpen(!sidebarOpen)}
-                        title={sidebarOpen ? "Hide Previous Orders Sidebar" : "Show Previous Orders Sidebar"}
-                        style={{
-                            background: sidebarOpen ? "#1e293b" : "#18202a",
-                            border: sidebarOpen ? "1px solid #3b82f6" : "1px solid #2b3644",
-                            color: sidebarOpen ? "#60a5fa" : "#cbd5e1",
-                            padding: "8px 12px",
-                            borderRadius: 10,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            transition: "all 0.15s ease"
-                        }}
-                    >
-                        <span>📋</span>
-                        <span>{sidebarOpen ? t.hideHistory : t.pastOrders}</span>
-                    </button>
+                            <button
+                                onClick={() => setSidebarOpen(!sidebarOpen)}
+                                title="Past Orders"
+                                style={{
+                                    background: sidebarOpen ? "#1e293b" : "#18202a",
+                                    border: sidebarOpen ? "1px solid #3b82f6" : "1px solid #2b3644",
+                                    color: sidebarOpen ? "#60a5fa" : "#cbd5e1",
+                                    padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer"
+                                }}
+                            >
+                                📋 {sidebarOpen ? t.hideHistory : t.pastOrders}
+                            </button>
+                        </>
+                    )}
                 </div>
             </header>
 
-            {/* Layout with Sidebar and Separated Main Content */}
-            <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-                {/* Previous Orders Sidebar */}
-                <PreviousOrdersSidebar
-                    isOpen={sidebarOpen}
-                    onToggle={() => setSidebarOpen(!sidebarOpen)}
-                    currentOrderId={conversationId}
-                    onReorder={(reorderText) => {
-                        setActiveTab("chat")
-                        sendMessage(reorderText)
-                    }}
-                />
+            {/* ══════════════════════════════════════════════════════════════════════
+                CUSTOMER VIEW
+               ══════════════════════════════════════════════════════════════════════ */}
+            {role === "customer" ? (
+                <div style={{ flex: 1, display: "flex", overflow: "hidden", flexDirection: "column" }}>
+                    {/* Live Store Details Banner provided to Customer */}
+                    <div style={{
+                        background: "linear-gradient(90deg, #101924 0%, #0d1218 100%)",
+                        borderBottom: "1px solid #1a2533",
+                        padding: "8px 24px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: 12,
+                        fontSize: 12
+                    }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                            <span style={{ color: "#25D366", fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+                                <span>🏪</span> {storeProfile.store_name}
+                            </span>
+                            <span style={{ color: "#94a3b8" }}>
+                                👤 {t.storeOwner}: <strong style={{ color: "#e2e8f0" }}>{storeProfile.owner_name}</strong>
+                            </span>
+                            <span style={{ color: "#94a3b8" }}>
+                                📞 {t.storePhone}: <strong style={{ color: "#60a5fa" }}>{storeProfile.phone}</strong>
+                            </span>
+                            <span style={{ color: "#94a3b8" }}>
+                                📍 {t.storeAddress}: <span style={{ color: "#cbd5e1" }}>{storeProfile.address}</span>
+                            </span>
+                        </div>
 
-                {/* Main Content Area (Separated Pages) */}
-                <main style={{
-                    flex: 1,
-                    overflowY: "auto",
-                    display: "flex",
-                    flexDirection: "column"
-                }}>
-                    {activeTab === "chat" && (
-                        <ChatBox
-                            messages={messages}
-                            onSend={sendMessage}
-                            loading={loading}
-                            confirmedCount={confirmed.length}
-                            grandTotal={bill?.grand_total}
-                            onNavigateToSummary={() => setActiveTab("summary")}
-                        />
+                        {storeProfile.upi_id && (
+                            <div style={{ background: "#0c1f15", border: "1px solid #1a4a2d", borderRadius: 6, padding: "3px 8px", color: "#86efac", fontSize: 11 }}>
+                                💳 UPI: {storeProfile.upi_id}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Live Order Confirmation Status Banner (Updates live when shopkeeper confirms!) */}
+                    {conversationId && confirmed.length > 0 && (
+                        <div style={{
+                            background: orderStatus === "delivered" ? "#0f2f1d" : orderStatus === "confirmed" ? "#0d331e" : "#2d2009",
+                            borderBottom: orderStatus === "delivered" || orderStatus === "confirmed" ? "1px solid #1c6136" : "1px solid #573a0e",
+                            padding: "8px 24px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: orderStatus === "delivered" ? "#4ade80" : orderStatus === "confirmed" ? "#25D366" : "#f59e0b",
+                            transition: "all 0.3s ease"
+                        }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{ fontSize: 14 }}>
+                                    {orderStatus === "delivered" ? "🎉" : orderStatus === "confirmed" ? "✓" : "⏳"}
+                                </span>
+                                <span>
+                                    {orderStatus === "delivered"
+                                        ? t.liveStatusDelivered
+                                        : orderStatus === "confirmed"
+                                        ? t.liveStatusConfirmed
+                                        : t.liveStatusPending}
+                                </span>
+                            </div>
+                            <span style={{
+                                background: "rgba(0,0,0,0.3)",
+                                padding: "2px 8px",
+                                borderRadius: 4,
+                                fontSize: 11,
+                                letterSpacing: 0.5
+                            }}>
+                                INVOICE #ORD-{conversationId}
+                            </span>
+                        </div>
                     )}
 
-                    {activeTab === "summary" && (
-                        <OrderPanel
-                            confirmed={confirmed}
-                            pending={pending}
-                            grandTotal={bill?.grand_total}
-                            onClarify={(optionText) => {
-                                sendMessage(optionText)
-                            }}
-                            onNavigateToChat={() => setActiveTab("chat")}
-                            onNavigateToBill={() => setActiveTab("bill")}
-                        />
-                    )}
-
-                    {activeTab === "bill" && (
-                        <BillCard
-                            bill={bill}
-                            state={state}
-                            orderId={conversationId}
-                            lang={lang}
-                            onNavigateToSummary={() => setActiveTab("summary")}
-                            onReset={resetOrder}
-                        />
-                    )}
-
-                    {activeTab === "dashboard" && (
-                        <ShopkeeperDashboard
-                            lang={lang}
-                            onLangChange={handleLangChange}
+                    {/* Main Workspace with Previous Orders Sidebar */}
+                    <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+                        <PreviousOrdersSidebar
+                            isOpen={sidebarOpen}
+                            onToggle={() => setSidebarOpen(!sidebarOpen)}
+                            currentOrderId={conversationId}
                             onReorder={(reorderText) => {
                                 setActiveTab("chat")
                                 sendMessage(reorderText)
                             }}
                         />
-                    )}
+
+                        <main style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+                            {activeTab === "chat" && (
+                                <ChatBox
+                                    messages={messages}
+                                    onSend={sendMessage}
+                                    loading={loading}
+                                    confirmedCount={confirmed.length}
+                                    grandTotal={bill?.grand_total}
+                                    onNavigateToSummary={() => setActiveTab("summary")}
+                                />
+                            )}
+
+                            {activeTab === "summary" && (
+                                <OrderPanel
+                                    confirmed={confirmed}
+                                    pending={pending}
+                                    grandTotal={bill?.grand_total}
+                                    onClarify={(optionText) => sendMessage(optionText)}
+                                    onNavigateToChat={() => setActiveTab("chat")}
+                                    onNavigateToBill={() => setActiveTab("bill")}
+                                />
+                            )}
+
+                            {activeTab === "bill" && (
+                                <BillCard
+                                    bill={bill}
+                                    state={orderStatus === "confirmed" ? "confirmed" : state}
+                                    orderId={conversationId}
+                                    lang={lang}
+                                    storeProfile={storeProfile}
+                                    onNavigateToSummary={() => setActiveTab("summary")}
+                                    onReset={resetOrder}
+                                />
+                            )}
+                        </main>
+                    </div>
+                </div>
+            ) : (
+                /* ══════════════════════════════════════════════════════════════════════
+                    SHOPKEEPER PORTAL VIEW
+                   ══════════════════════════════════════════════════════════════════════ */
+                <main style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+                    <ShopkeeperDashboard
+                        lang={lang}
+                        onLangChange={handleLangChange}
+                        onReorder={(reorderText) => {
+                            handleRoleChange("customer")
+                            setActiveTab("chat")
+                            sendMessage(reorderText)
+                        }}
+                    />
                 </main>
-            </div>
+            )}
         </div>
     )
 }
