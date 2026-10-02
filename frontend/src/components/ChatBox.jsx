@@ -1,7 +1,17 @@
 import { useState, useRef, useEffect } from "react"
 import { transliterateHindiToRoman } from "../utils/transliterate"
 
-export default function ChatBox({ messages, onSend, loading, confirmedCount, grandTotal, onNavigateToSummary }) {
+export default function ChatBox({
+    messages,
+    onSend,
+    loading,
+    confirmedCount,
+    grandTotal,
+    onNavigateToSummary,
+    onToggleInventory,
+    isInventoryOpen,
+    inventoryCount = 134
+}) {
     const [input, setInput] = useState("")
     const [listening, setListening] = useState(false)
     const [voiceTranscript, setVoiceTranscript] = useState("")
@@ -236,8 +246,43 @@ export default function ChatBox({ messages, onSend, loading, confirmedCount, gra
                     )}
                 </div>
 
-                {/* Voice Audio Speaker Output Toggle */}
+                {/* Top Action Buttons: Inventory beside chatbot & Voice Toggle */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {onToggleInventory && (
+                        <button
+                            onClick={onToggleInventory}
+                            title={isInventoryOpen ? "Close Shop Inventory" : "View available items in shop"}
+                            style={{
+                                background: isInventoryOpen ? "#25D366" : "rgba(37, 211, 102, 0.14)",
+                                border: isInventoryOpen ? "1px solid #22c55e" : "1px solid #285437",
+                                color: isInventoryOpen ? "#000" : "#25D366",
+                                borderRadius: 20,
+                                padding: "4px 12px",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                transition: "all 0.15s ease",
+                                boxShadow: isInventoryOpen ? "0 0 10px rgba(37, 211, 102, 0.3)" : "none"
+                            }}
+                        >
+                            <span>📦</span>
+                            <span>{isInventoryOpen ? "Hide Inventory" : "Shop Inventory"}</span>
+                            <span style={{
+                                background: isInventoryOpen ? "#000" : "#25D366",
+                                color: isInventoryOpen ? "#25D366" : "#000",
+                                fontSize: 10,
+                                fontWeight: 800,
+                                padding: "1px 6px",
+                                borderRadius: 10
+                            }}>
+                                {inventoryCount}
+                            </span>
+                        </button>
+                    )}
+
                     <button
                         onClick={() => {
                             if (soundEnabled && 'speechSynthesis' in window) {
@@ -262,7 +307,7 @@ export default function ChatBox({ messages, onSend, loading, confirmedCount, gra
                             transition: "all 0.15s ease"
                         }}
                     >
-                        <span>{soundEnabled ? "🔊 Voice Reply: ON" : "🔇 Voice Reply: OFF"}</span>
+                        <span>{soundEnabled ? "🔊 Voice: ON" : "🔇 Voice: OFF"}</span>
                         <span style={{
                             width: 6,
                             height: 6,
@@ -302,6 +347,23 @@ export default function ChatBox({ messages, onSend, loading, confirmedCount, gra
                             Boliye Hindi ya Hinglish mein — bot bol kar aur likh kar dono mein jawab dega!
                         </p>
                         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8 }}>
+                            {onToggleInventory && (
+                                <button
+                                    onClick={onToggleInventory}
+                                    style={{
+                                        background: "rgba(37, 211, 102, 0.15)",
+                                        border: "1px solid #25D366",
+                                        color: "#25D366",
+                                        borderRadius: 20,
+                                        padding: "6px 14px",
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        cursor: "pointer"
+                                    }}
+                                >
+                                    📦 View Shop Inventory (Items Available)
+                                </button>
+                            )}
                             {quickPills.map((pill, idx) => (
                                 <button
                                     key={idx}
