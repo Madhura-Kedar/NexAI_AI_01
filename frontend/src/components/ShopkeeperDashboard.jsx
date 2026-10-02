@@ -472,19 +472,18 @@ export default function ShopkeeperDashboard({ lang, onLangChange, onReorder }) {
                                         <th style={{ padding: "14px 18px" }}>{t.thItems}</th>
                                         <th style={{ padding: "14px 18px", textAlign: "right" }}>{t.thTotal}</th>
                                         <th style={{ padding: "14px 18px", textAlign: "center" }}>{t.thStatus}</th>
-                                        <th style={{ padding: "14px 18px", textAlign: "right" }}>{t.thActions}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {loadingOrders ? (
                                         <tr>
-                                            <td colSpan={6} style={{ textAlign: "center", padding: "30px", color: "#94a3b8" }}>
+                                            <td colSpan={5} style={{ textAlign: "center", padding: "30px", color: "#94a3b8" }}>
                                                 ⏳ Loading orders...
                                             </td>
                                         </tr>
                                     ) : filteredOrders.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
+                                            <td colSpan={5} style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
                                                 {t.noOrdersFound}
                                             </td>
                                         </tr>
@@ -617,21 +616,6 @@ export default function ShopkeeperDashboard({ lang, onLangChange, onReorder }) {
                                                                 {t.markDelivered}
                                                             </button>
                                                         )}
-                                                    </td>
-
-                                                    {/* Actions */}
-                                                    <td style={{ padding: "14px 18px", textAlign: "right", verticalAlign: "top" }}>
-                                                        <button
-                                                            onClick={() => {
-                                                                const text = `APNA KIRANA BILL #ORD-${order.id}\nCustomer: ${order.customer_name || 'Customer'}\nTotal: ₹${order.total}`
-                                                                const phone = (order.customer_phone || "").replace(/[^0-9]/g, "")
-                                                                window.open(`https://api.whatsapp.com/send?${phone ? `phone=${phone}&` : ''}text=${encodeURI(text)}`, "_blank")
-                                                            }}
-                                                            title="WhatsApp"
-                                                            style={{ background: "#128C7E", border: "none", color: "#fff", borderRadius: 6, padding: "5px 8px", fontSize: 11, cursor: "pointer" }}
-                                                        >
-                                                            📲 WhatsApp
-                                                        </button>
                                                     </td>
                                                 </tr>
                                             )
