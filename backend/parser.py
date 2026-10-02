@@ -23,9 +23,15 @@ _ITEM_NAMES = [
 ]
 
 CATALOG_HINT = (
-    "atta, sugar, sunflower oil, mustard oil, groundnut oil, butter, ghee, "
-    "toor dal, moong dal, masoor dal, basmati rice, salt, turmeric, garam masala, "
-    "tea, milk, biscuit, besan, maida"
+    "atta, sugar, refined oil, sunflower oil, mustard oil, groundnut oil, butter, ghee, "
+    "toor dal, moong dal, masoor dal, chana dal, urad dal, rajma, kabuli chana, "
+    "basmati rice, sona masoori rice, salt, rock salt, turmeric, chilli, coriander, cumin, "
+    "garam masala, chana masala, rajma masala, chole masala, tea, coffee, milk, paneer, curd, "
+    "cheese, cream, biscuit, cookies, marie gold, oreo, monaco, bhujia, mixture, lays, chips, "
+    "kurkure, noodles, maggi, besan, maida, surf excel, ariel, tide, vim, pril, lizol, harpic, "
+    "colin, soap, lux, dove, dettol, lifebuoy, shampoo, toothpaste, colgate, pepsodent, "
+    "handwash, baby powder, jam, bread, ketchup, chocolate, dairy milk, kitkat, water, "
+    "bisleri, frooti, maaza, limca"
 )
 
 # ---------------------------------------------------------------------------
@@ -42,14 +48,14 @@ Rules:
 - Convert Hindi numbers: ek=1, do=2, teen=3, char=4, paanch=5, chhe=6, saat=7
 - Convert units: kilo/kg=kg, gram/g=g, litre/liter/L=L, ml=ml
 - Convert fractions: half/aadha=0.5, paav=0.25, dedh=1.5
-- Liquid items (tel/oil, doodh/milk, ghee) are always measured in L or ml, NOT kg.
+- Liquid items (tel/oil, doodh/milk, ghee, drinks, cleaner, liquid) are measured in L or ml, NOT kg.
   If customer says "2 kilo tel", interpret as 2L not 2kg.
 - If quantity is vague (thoda, zyada, kam, thoda sa) set vague=true
 - If quantity is completely unspecified, set qty=null and vague=false
 - Map Hindi item names: tel=oil, makhan=butter, cheeni/chini/shakkar=sugar,
   aata/atta=atta, doodh=milk, chawal=rice, namak=salt, haldi=turmeric,
-  chai=tea, dal=dal (specify type if mentioned)
-- brand: extract if mentioned (Amul, Aashirvaad, Fortune, Patanjali, etc.), else null
+  chai=tea, dal=dal (specify type if mentioned), dahi=curd, paani=water, sabun=soap
+- brand: extract if mentioned (Amul, Aashirvaad, Fortune, Patanjali, Tata, MDH, Everest, Parle, Britannia, Maggi, Lays, Cadbury, Surf Excel, Dettol, etc.), else null
 
 Return ONLY valid JSON, no extra text, no markdown:
 {{
@@ -184,10 +190,14 @@ OFF_TOPIC_REPLIES = [
 _ORDER_PHRASES = [
     "good day", "mother dairy", "red label", "india gate", "brooke bond",
     "surf excel", "garam masala", "mustard oil", "sunflower oil", "groundnut oil",
-    "desi ghee", "wheat flour", "tata salt", "parle g", "toor dal", "moong dal",
-    "masoor dal", "arhar dal", "basmati rice", "de do", "bhej do", "le aao",
-    "dal do", "pack karo", "add karo", "hata do", "kitna hai", "kya bhav",
-    "kya rate", "order karna", "order desk"
+    "refined oil", "desi ghee", "wheat flour", "tata salt", "parle g", "toor dal", "moong dal",
+    "masoor dal", "arhar dal", "chana dal", "urad dal", "kabuli chana", "sona masoori",
+    "basmati rice", "rock salt", "sendha namak", "red chilli", "cumin seeds",
+    "kitchen king", "chana masala", "rajma masala", "chole masala", "wagh bakri",
+    "marie gold", "nutri choice", "hide seek", "dairy milk", "kit kat", "clinic plus",
+    "dishwash bar", "dishwash liquid", "floor cleaner", "toilet cleaner", "glass cleaner",
+    "baby powder", "de do", "bhej do", "le aao", "dal do", "pack karo", "add karo",
+    "hata do", "kitna hai", "kya bhav", "kya rate", "order karna", "order desk"
 ]
 
 _ORDER_KEYWORDS = {
@@ -195,19 +205,25 @@ _ORDER_KEYWORDS = {
     "atta", "aata", "gehun", "wheat", "flour", "maida", "besan", "sooji", "suji", "rava",
     "sugar", "cheeni", "chini", "shakkar", "gud", "jaggery",
     "tel", "oil", "sarso", "mustard", "sunflower", "refined", "groundnut", "moongfali", "soya", "soyabean",
-    "butter", "makhan", "makkhan", "ghee", "paneer", "dahi", "curd", "cheese",
-    "dal", "daal", "toor", "tuvar", "arhar", "moong", "masoor", "urad", "chana", "rajma", "chhole", "lentil", "lentils",
-    "rice", "chawal", "basmati", "poha",
-    "salt", "namak", "haldi", "turmeric", "masala", "mirch", "mirchi", "chilli", "chili", "dhaniya", "jeera", "hing",
-    "tea", "chai", "coffee",
-    "milk", "doodh",
-    "biscuit", "biscuits", "cookie", "cookies", "rusk", "toast", "bread",
-    "maggi", "noodle", "noodles", "pasta", "sauce", "ketchup", "jam",
-    "sabun", "soap", "shampoo", "surf", "detergent", "colgate", "paste", "toothpaste",
+    "butter", "makhan", "makkhan", "ghee", "paneer", "dahi", "curd", "cheese", "cream", "malai",
+    "dal", "daal", "toor", "tuvar", "arhar", "moong", "masoor", "urad", "chana", "rajma", "chhole", "chole", "kabuli", "lentil", "lentils",
+    "rice", "chawal", "basmati", "poha", "masoori",
+    "salt", "namak", "sendha", "haldi", "turmeric", "masala", "mirch", "mirchi", "chilli", "chili", "dhaniya", "jeera", "cumin", "hing",
+    "tea", "chai", "coffee", "nescafe", "bru",
+    "milk", "doodh", "toned",
+    "biscuit", "biscuits", "cookie", "cookies", "rusk", "toast", "bread", "oreo", "monaco", "marie",
+    "snack", "snacks", "bhujia", "mixture", "namkeen", "chips", "crisps", "lays", "kurkure",
+    "maggi", "noodle", "noodles", "yippee", "pasta", "sauce", "ketchup", "jam",
+    "chocolate", "choco", "silk", "kitkat",
+    "water", "paani", "juice", "frooti", "maaza", "limca", "soda", "drink", "drinks",
+    "sabun", "soap", "shampoo", "surf", "detergent", "ariel", "tide", "colgate", "paste", "toothpaste", "pepsodent",
+    "handwash", "powder", "cleaner", "lizol", "harpic", "colin", "vim", "pril",
 
     # Brands
-    "aashirvaad", "amul", "fortune", "patanjali", "tata", "pillsbury", "saffola",
-    "catch", "mdh", "everest", "parle", "britannia", "daawat", "nestle", "cadbury", "dettol",
+    "aashirvaad", "amul", "fortune", "patanjali", "tata", "pillsbury", "saffola", "shaktibhog", "kohinoor", "uttam",
+    "catch", "mdh", "everest", "parle", "britannia", "daawat", "nestle", "cadbury", "dettol", "savlon",
+    "wagh", "bakri", "lipton", "taj", "mahal", "haldirams", "sunfeast", "kissan", "modern", "bisleri",
+    "lux", "dove", "lifebuoy", "head", "shoulders", "clinic", "plus",
 
     # Quantities & Units
     "kg", "kilo", "kilos", "kilogram", "kilograms", "g", "gm", "gms", "gram", "grams",
