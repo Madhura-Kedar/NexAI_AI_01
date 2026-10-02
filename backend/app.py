@@ -6,6 +6,7 @@ from parser import (
     parse_order, detect_cancel, detect_off_topic, get_off_topic_reply,
     generate_clarification, resolve_reply, generate_delivery_note,
 )
+from transliterate import transliterate_hindi_to_roman
 from matcher import run_matching
 from billing import generate_bill
 
@@ -138,7 +139,8 @@ def _handle_cancel(conn, conv, conversation_id, confirmed, pending, cancel_info)
 @app.route("/api/message", methods=["POST"])
 def handle_message():
     data            = request.get_json()
-    message         = data.get("message", "").strip()
+    raw_message     = data.get("message", "").strip()
+    message         = transliterate_hindi_to_roman(raw_message)
     conversation_id = data.get("conversation_id")
 
     if not message:
@@ -295,7 +297,8 @@ def handle_message():
 def handle_reply():
     data            = request.get_json()
     conversation_id = data.get("conversation_id")
-    reply           = data.get("message", "").strip()
+    raw_reply       = data.get("message", "").strip()
+    reply           = transliterate_hindi_to_roman(raw_reply)
 
     conn  = get_db()
     conv  = dict(conn.execute(

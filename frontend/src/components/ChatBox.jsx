@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react"
+import { transliterateHindiToRoman } from "../utils/transliterate"
 
 export default function ChatBox({ messages, onSend, loading, confirmedCount, grandTotal, onNavigateToSummary }) {
     const [input, setInput] = useState("")
@@ -12,8 +13,9 @@ export default function ChatBox({ messages, onSend, loading, confirmedCount, gra
     }, [messages, voiceTranscript])
 
     const handleSend = (textToSend) => {
-        const text = (textToSend || input).trim()
-        if (!text) return
+        const raw = (textToSend || input).trim()
+        if (!raw) return
+        const text = transliterateHindiToRoman(raw)
         onSend(text)
         setInput("")
         setVoiceTranscript("")
@@ -47,12 +49,14 @@ export default function ChatBox({ messages, onSend, loading, confirmedCount, gra
             for (let i = 0; i < e.results.length; i++) {
                 finalTranscript += e.results[i][0].transcript
             }
-            setVoiceTranscript(finalTranscript)
-            setInput(finalTranscript)
+            // Convert Hindi Devanagari speech directly into English Roman script
+            const romanized = transliterateHindiToRoman(finalTranscript)
+            setVoiceTranscript(romanized)
+            setInput(romanized)
 
             if (e.results[0].isFinal) {
                 setTimeout(() => {
-                    handleSend(finalTranscript)
+                    handleSend(romanized)
                 }, 400)
             }
         }
