@@ -373,7 +373,6 @@ export default function App() {
                     {activeTab === "bill" && (
                         <BillCard
                             bill={bill}
-                            deliveryNote={deliveryNote}
                             state={state}
                             onNavigateToSummary={() => setActiveTab("summary")}
                             onReset={resetOrder}

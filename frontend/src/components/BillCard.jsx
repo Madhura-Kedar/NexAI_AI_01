@@ -1,8 +1,11 @@
 import { useState } from "react"
 
-export default function BillCard({ bill, deliveryNote, state, onNavigateToSummary, onReset }) {
+export default function BillCard({ bill, state, onNavigateToSummary, onReset }) {
     const isConfirmed = state === "confirmed"
     const [copied, setCopied] = useState(false)
+    const [customerName, setCustomerName] = useState("")
+    const [customerPhone, setCustomerPhone] = useState("")
+    const [customerAddress, setCustomerAddress] = useState("")
 
     const handlePrint = () => {
         window.print()
@@ -13,6 +16,10 @@ export default function BillCard({ bill, deliveryNote, state, onNavigateToSummar
         let text = `*APNA KIRANA STORE - BILL*\n`
         text += `Date: ${new Date().toLocaleDateString("en-IN")}\n`
         text += `---------------------------\n`
+        text += `*Customer:* ${customerName || "Walk-in Customer"}\n`
+        if (customerPhone) text += `*Phone:* ${customerPhone}\n`
+        if (customerAddress) text += `*Address:* ${customerAddress}\n`
+        text += `---------------------------\n`
         bill.line_items?.forEach((item, idx) => {
             text += `${idx + 1}. ${item.product_name} - ${item.qty}${item.unit} x ₹${item.price_per_unit} = ₹${item.subtotal}\n`
         })
@@ -20,9 +27,6 @@ export default function BillCard({ bill, deliveryNote, state, onNavigateToSummar
         text += `Subtotal: ₹${bill.subtotal}\n`
         text += `Delivery: ${bill.delivery_charge === 0 ? "FREE" : `₹${bill.delivery_charge}`}\n`
         text += `*TOTAL: ₹${bill.grand_total}*\n\n`
-        if (deliveryNote) {
-            text += `*Delivery Note:* ${deliveryNote}\n`
-        }
         text += `Thank you for shopping with us! 🙏`
 
         const encoded = encodeURI(text)
@@ -32,6 +36,10 @@ export default function BillCard({ bill, deliveryNote, state, onNavigateToSummar
     const copyText = () => {
         if (!bill) return
         let text = `APNA KIRANA STORE - BILL\n`
+        text += `Customer: ${customerName || "Walk-in Customer"}\n`
+        if (customerPhone) text += `Phone: ${customerPhone}\n`
+        if (customerAddress) text += `Address: ${customerAddress}\n`
+        text += `---------------------------\n`
         bill.line_items?.forEach((item, idx) => {
             text += `${idx + 1}. ${item.product_name} (${item.qty}${item.unit}) = ₹${item.subtotal}\n`
         })
@@ -170,6 +178,118 @@ export default function BillCard({ bill, deliveryNote, state, onNavigateToSummar
                 </div>
             </div>
 
+            {/* Customer Details Input Section (Billing & Delivery info) */}
+            <div className="no-print" style={{
+                background: "#11161d",
+                border: "1px solid #1f2836",
+                borderRadius: 16,
+                padding: "20px 24px",
+                boxShadow: "0 4px 20px rgba(0,0,0,0.25)"
+            }}>
+                <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 16
+                }}>
+                    <span style={{ fontSize: 20 }}>👤</span>
+                    <div>
+                        <h3 style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>
+                            Customer Details for Billing & Delivery
+                        </h3>
+                        <p style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                            Details entered here will be printed on the invoice and shared on WhatsApp
+                        </p>
+                    </div>
+                </div>
+
+                <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 14
+                }}>
+                    {/* Customer Name */}
+                    <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>
+                            Customer Name
+                        </label>
+                        <input
+                            type="text"
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                            placeholder="e.g. Rahul Sharma"
+                            style={{
+                                width: "100%",
+                                background: "#0c0f13",
+                                border: "1px solid #283344",
+                                borderRadius: 10,
+                                padding: "10px 14px",
+                                color: "#fff",
+                                fontSize: 13,
+                                outline: "none",
+                                transition: "border-color 0.15s ease"
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = "#25D366"}
+                            onBlur={(e) => e.target.style.borderColor = "#283344"}
+                        />
+                    </div>
+
+                    {/* Phone Number */}
+                    <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>
+                            Phone Number
+                        </label>
+                        <input
+                            type="tel"
+                            value={customerPhone}
+                            onChange={(e) => setCustomerPhone(e.target.value)}
+                            placeholder="e.g. +91 98765 43210"
+                            style={{
+                                width: "100%",
+                                background: "#0c0f13",
+                                border: "1px solid #283344",
+                                borderRadius: 10,
+                                padding: "10px 14px",
+                                color: "#fff",
+                                fontSize: 13,
+                                outline: "none",
+                                transition: "border-color 0.15s ease"
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = "#25D366"}
+                            onBlur={(e) => e.target.style.borderColor = "#283344"}
+                        />
+                    </div>
+                </div>
+
+                {/* Customer Address */}
+                <div style={{ marginTop: 14 }}>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>
+                        Customer Address (Delivery Location)
+                    </label>
+                    <textarea
+                        rows={2}
+                        value={customerAddress}
+                        onChange={(e) => setCustomerAddress(e.target.value)}
+                        placeholder="e.g. Flat 402, Gokul Heights, MG Road, Landmark: Near City Hospital"
+                        style={{
+                            width: "100%",
+                            background: "#0c0f13",
+                            border: "1px solid #283344",
+                            borderRadius: 10,
+                            padding: "10px 14px",
+                            color: "#fff",
+                            fontSize: 13,
+                            outline: "none",
+                            resize: "vertical",
+                            fontFamily: "inherit",
+                            transition: "border-color 0.15s ease"
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = "#25D366"}
+                        onBlur={(e) => e.target.style.borderColor = "#283344"}
+                    />
+                </div>
+            </div>
+
             {/* Printable Receipt Card */}
             <div id="printable-receipt" style={{
                 background: "#11161d",
@@ -184,7 +304,7 @@ export default function BillCard({ bill, deliveryNote, state, onNavigateToSummar
                     textAlign: "center",
                     borderBottom: "2px dashed #2d3748",
                     paddingBottom: 18,
-                    marginBottom: 18
+                    marginBottom: 16
                 }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: 1 }}>
                         🏪 APNA KIRANA STORE
@@ -207,6 +327,32 @@ export default function BillCard({ bill, deliveryNote, state, onNavigateToSummar
                     }}>
                         <span>Date: {new Date().toLocaleDateString("en-IN")} {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
                         <span>Invoice: #ORD-{Math.floor(1000 + Math.random() * 9000)}</span>
+                    </div>
+                </div>
+
+                {/* Customer Details section on Receipt */}
+                <div style={{
+                    background: "#0d1117",
+                    border: "1px solid #1f2633",
+                    borderRadius: 10,
+                    padding: "12px 16px",
+                    marginBottom: 16,
+                    fontSize: 12,
+                    lineHeight: 1.6
+                }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                        <div>
+                            <span style={{ color: "#64748b" }}>Customer: </span>
+                            <strong style={{ color: "#e2e8f0" }}>{customerName.trim() || "Walk-in Customer"}</strong>
+                        </div>
+                        <div>
+                            <span style={{ color: "#64748b" }}>Phone: </span>
+                            <span style={{ color: "#cbd5e1" }}>{customerPhone.trim() || "—"}</span>
+                        </div>
+                    </div>
+                    <div style={{ marginTop: 4 }}>
+                        <span style={{ color: "#64748b" }}>Address: </span>
+                        <span style={{ color: "#cbd5e1" }}>{customerAddress.trim() || "Store Counter / Pickup"}</span>
                     </div>
                 </div>
 
@@ -318,42 +464,6 @@ export default function BillCard({ bill, deliveryNote, state, onNavigateToSummar
                     Aapki sewa mein hamesha tatpar! · Computer Generated Invoice
                 </div>
             </div>
-
-            {/* Delivery Note Card (for delivery person) */}
-            {deliveryNote && (
-                <div style={{
-                    background: "#0d1f2d",
-                    border: "1px solid #16405b",
-                    borderRadius: 14,
-                    padding: "18px 22px"
-                }}>
-                    <div style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: "#38bdf8",
-                        letterSpacing: 0.5,
-                        marginBottom: 8
-                    }}>
-                        <span>🚚</span>
-                        <span>DELIVERY PERSON NOTE (Hinglish)</span>
-                    </div>
-                    <div style={{
-                        fontSize: 14,
-                        color: "#e0f2fe",
-                        lineHeight: 1.6,
-                        whiteSpace: "pre-line",
-                        background: "#08131d",
-                        padding: "12px 16px",
-                        borderRadius: 10,
-                        border: "1px solid #0f2c42"
-                    }}>
-                        {deliveryNote}
-                    </div>
-                </div>
-            )}
 
             {/* Bottom New Order Action */}
             <div className="no-print" style={{
