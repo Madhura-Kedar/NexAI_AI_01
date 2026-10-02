@@ -4,7 +4,6 @@ import OrderPanel from "./components/OrderPanel"
 import BillCard from "./components/BillCard"
 import PreviousOrdersSidebar from "./components/PreviousOrdersSidebar"
 import ShopkeeperDashboard from "./components/ShopkeeperDashboard"
-import CustomerInventoryPanel from "./components/CustomerInventoryPanel"
 import { translations, LANGUAGES } from "./utils/translations"
 
 const STORAGE_KEY = "kirana_active_session"
@@ -43,8 +42,7 @@ export default function App() {
         }
     })
 
-    const [activeTab, setActiveTab] = useState("chat") // "chat", "inventory", "summary", "bill"
-    const [customerInventoryOpen, setCustomerInventoryOpen] = useState(false)
+    const [activeTab, setActiveTab] = useState("chat") // "chat", "summary", "bill"
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [lang, setLang] = useState(() => {
         try {
@@ -276,25 +274,6 @@ export default function App() {
                             <span>{t.tabChat}</span>
                         </button>
 
-                        <button
-                            onClick={() => {
-                                if (activeTab === "chat") {
-                                    setCustomerInventoryOpen(!customerInventoryOpen)
-                                } else {
-                                    setActiveTab("inventory")
-                                }
-                            }}
-                            style={{
-                                display: "flex", alignItems: "center", gap: 6,
-                                padding: "8px 16px", borderRadius: 8, border: "none",
-                                background: (activeTab === "inventory" || (activeTab === "chat" && customerInventoryOpen)) ? "#1f2937" : "transparent",
-                                color: (activeTab === "inventory" || (activeTab === "chat" && customerInventoryOpen)) ? "#25D366" : "#94a3b8",
-                                fontWeight: (activeTab === "inventory" || (activeTab === "chat" && customerInventoryOpen)) ? 700 : 500, fontSize: 13, cursor: "pointer"
-                            }}
-                        >
-                            <span>📦</span>
-                            <span>{t.tabInventory || "Shop Inventory"}</span>
-                        </button>
 
                         <button
                             onClick={() => setActiveTab("summary")}
@@ -550,54 +529,16 @@ export default function App() {
 
                         <main style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
                             {activeTab === "chat" && (
-                                <div style={{ flex: 1, display: "flex", overflow: "hidden", height: "100%" }}>
-                                    <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
-                                        <ChatBox
-                                            messages={messages}
-                                            onSend={sendMessage}
-                                            loading={loading}
-                                            confirmedCount={confirmed.length}
-                                            grandTotal={bill?.grand_total}
-                                            onNavigateToSummary={() => setActiveTab("summary")}
-                                            onToggleInventory={() => setCustomerInventoryOpen(!customerInventoryOpen)}
-                                            isInventoryOpen={customerInventoryOpen}
-                                        />
-                                    </div>
-                                    {customerInventoryOpen && (
-                                        <div style={{
-                                            width: 440,
-                                            maxWidth: "100%",
-                                            height: "100%",
-                                            flexShrink: 0,
-                                            boxShadow: "-4px 0 24px rgba(0,0,0,0.5)",
-                                            zIndex: 10
-                                        }}>
-                                            <CustomerInventoryPanel
-                                                isDrawer={true}
-                                                onClose={() => setCustomerInventoryOpen(false)}
-                                                onSelectItem={(prod) => {
-                                                    sendMessage(`1 ${prod.name} add karo`)
-                                                }}
-                                                lang={lang}
-                                                translations={t}
-                                                storeProfile={storeProfile}
-                                            />
-                                        </div>
-                                    )}
+                                <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", height: "100%" }}>
+                                    <ChatBox
+                                        messages={messages}
+                                        onSend={sendMessage}
+                                        loading={loading}
+                                        confirmedCount={confirmed.length}
+                                        grandTotal={bill?.grand_total}
+                                        onNavigateToSummary={() => setActiveTab("summary")}
+                                    />
                                 </div>
-                            )}
-
-                            {activeTab === "inventory" && (
-                                <CustomerInventoryPanel
-                                    isDrawer={false}
-                                    onSelectItem={(prod) => {
-                                        setActiveTab("chat")
-                                        sendMessage(`1 ${prod.name} add karo`)
-                                    }}
-                                    lang={lang}
-                                    translations={t}
-                                    storeProfile={storeProfile}
-                                />
                             )}
 
                             {activeTab === "summary" && (

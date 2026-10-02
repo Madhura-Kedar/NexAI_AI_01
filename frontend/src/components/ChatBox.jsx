@@ -7,10 +7,7 @@ export default function ChatBox({
     loading,
     confirmedCount,
     grandTotal,
-    onNavigateToSummary,
-    onToggleInventory,
-    isInventoryOpen,
-    inventoryCount = 134
+    onNavigateToSummary
 }) {
     const [input, setInput] = useState("")
     const [listening, setListening] = useState(false)
@@ -246,42 +243,8 @@ export default function ChatBox({
                     )}
                 </div>
 
-                {/* Top Action Buttons: Inventory beside chatbot & Voice Toggle */}
+                {/* Top Action Buttons: Voice Toggle */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    {onToggleInventory && (
-                        <button
-                            onClick={onToggleInventory}
-                            title={isInventoryOpen ? "Close Shop Inventory" : "View available items in shop"}
-                            style={{
-                                background: isInventoryOpen ? "#25D366" : "rgba(37, 211, 102, 0.14)",
-                                border: isInventoryOpen ? "1px solid #22c55e" : "1px solid #285437",
-                                color: isInventoryOpen ? "#000" : "#25D366",
-                                borderRadius: 20,
-                                padding: "4px 12px",
-                                fontSize: 12,
-                                fontWeight: 700,
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 6,
-                                transition: "all 0.15s ease",
-                                boxShadow: isInventoryOpen ? "0 0 10px rgba(37, 211, 102, 0.3)" : "none"
-                            }}
-                        >
-                            <span>📦</span>
-                            <span>{isInventoryOpen ? "Hide Inventory" : "Shop Inventory"}</span>
-                            <span style={{
-                                background: isInventoryOpen ? "#000" : "#25D366",
-                                color: isInventoryOpen ? "#25D366" : "#000",
-                                fontSize: 10,
-                                fontWeight: 800,
-                                padding: "1px 6px",
-                                borderRadius: 10
-                            }}>
-                                {inventoryCount}
-                            </span>
-                        </button>
-                    )}
 
                     <button
                         onClick={() => {
@@ -347,23 +310,7 @@ export default function ChatBox({
                             Boliye Hindi ya Hinglish mein — bot bol kar aur likh kar dono mein jawab dega!
                         </p>
                         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8 }}>
-                            {onToggleInventory && (
-                                <button
-                                    onClick={onToggleInventory}
-                                    style={{
-                                        background: "rgba(37, 211, 102, 0.15)",
-                                        border: "1px solid #25D366",
-                                        color: "#25D366",
-                                        borderRadius: 20,
-                                        padding: "6px 14px",
-                                        fontSize: 12,
-                                        fontWeight: 700,
-                                        cursor: "pointer"
-                                    }}
-                                >
-                                    📦 View Shop Inventory (Items Available)
-                                </button>
-                            )}
+
                             {quickPills.map((pill, idx) => (
                                 <button
                                     key={idx}

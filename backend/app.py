@@ -369,8 +369,11 @@ def handle_message():
     if _is_stock_query(message):
         return _handle_stock_query(conn, message, data.get("conversation_id"))
 
-    # ── New conversation ─────────────────────────────────────────────────────
-    if not conversation_id:
+    conv_row = conn.execute(
+        "SELECT * FROM conversations WHERE id=?", (conversation_id,)
+    ).fetchone() if conversation_id else None
+
+    if not conv_row:
         cursor = conn.execute("INSERT INTO orders (status) VALUES ('pending')")
         order_id = cursor.lastrowid
         cursor2  = conn.execute(
@@ -380,10 +383,11 @@ def handle_message():
         )
         conversation_id = cursor2.lastrowid
         conn.commit()
+        conv_row = conn.execute(
+            "SELECT * FROM conversations WHERE id=?", (conversation_id,)
+        ).fetchone()
 
-    conv      = dict(conn.execute(
-        "SELECT * FROM conversations WHERE id=?", (conversation_id,)
-    ).fetchone())
+    conv      = dict(conv_row)
     confirmed = json.loads(conv["confirmed_items"])
     pending   = json.loads(conv["pending_items"])
 
@@ -539,9 +543,18 @@ def handle_reply():
     if _is_stock_query(reply):
         return _handle_stock_query(conn, reply, conversation_id)
 
-    conv  = dict(conn.execute(
+    conv_row = conn.execute(
         "SELECT * FROM conversations WHERE id=?", (conversation_id,)
-    ).fetchone())
+    ).fetchone() if conversation_id else None
+
+    if not conv_row:
+        conn.close()
+        return jsonify({
+            "error": "Conversation not found",
+            "bot_reply": "Session reset ho gaya hai. Kripya naya message bhejein."
+        }), 404
+
+    conv  = dict(conv_row)
 
     pending   = json.loads(conv["pending_items"])
     confirmed = json.loads(conv["confirmed_items"])
