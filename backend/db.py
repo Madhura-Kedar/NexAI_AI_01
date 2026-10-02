@@ -50,9 +50,16 @@ def init_db():
             state TEXT DEFAULT 'active',
             pending_items TEXT DEFAULT '[]',
             confirmed_items TEXT DEFAULT '[]',
+            chat_messages TEXT DEFAULT '[]',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(order_id) REFERENCES orders(id)
         );
     """)
+
+    # Safe migration: add chat_messages column if it doesn't exist yet (for existing DBs)
+    existing_cols = [row[1] for row in cursor.execute("PRAGMA table_info(conversations)").fetchall()]
+    if "chat_messages" not in existing_cols:
+        cursor.execute("ALTER TABLE conversations ADD COLUMN chat_messages TEXT DEFAULT '[]'")
+
     conn.commit()
     conn.close()

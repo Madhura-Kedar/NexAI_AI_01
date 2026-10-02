@@ -18,6 +18,204 @@ CORS(app)
 # Helpers
 # ---------------------------------------------------------------------------
 
+_HINGLISH_SYNONYMS = {
+    "doodh": "milk", "tel": "oil", "chawal": "rice", "cheeni": "sugar",
+    "chini": "sugar", "namak": "salt", "haldi": "turmeric", "mirch": "chilli",
+    "dhaniya": "coriander", "jeera": "cumin", "makhan": "butter", "dahi": "curd",
+    "chai": "tea", "patti": "tea", "biscuit": "biscuits", "sabun": "soap"
+}
+
+_STOCK_STOP_WORDS = {
+    "how", "much", "many", "is", "are", "there", "any", "left", "remaining",
+    "in", "stock", "quantity", "qty", "inventory", "available", "availability",
+    "kitna", "kitni", "kitne", "bacha", "bachi", "bache", "baki", "hai", "hain",
+    "hoga", "pada", "kya", "or", "of", "the", "a", "an", "do", "you", "have",
+    "aapke", "apke", "paas", "batao", "bataiye", "check", "karo", "kuch", "koi",
+    "mil", "jayega", "milega", "please", "bhi", "sirf", "mujhe", "chahiye",
+    "ka", "ki", "ke", "ko", "se", "me", "mein", "par", "pe", "packet", "packets",
+    "pack", "kg", "g", "gm", "gram", "l", "ltr", "litre", "ml", "items", "item"
+}
+
+_STOCK_EXPLICIT_KW = [
+    "stock", "inventory", "available", "availability",
+    "mil jayega", "milega kya", "kya milega", "kya available", "maal bacha",
+]
+
+_STOCK_QUESTION_PATTERNS = [
+    r"how\s+(much|many)\b.*?\b(left|there|available|remaining|in\s+stock|have)",
+    r"\b(quantity|qty)\b.*?\b(left|available|hai|bacha|bachi|bache|baki|there|batao|check|kitna|kitni|kitne|or\s+there)",
+    r"\b(kitna|kitni|kitne)\b.*?\b(bacha|bachi|bache|baki|hai|pada|stock|quantity|left|available)",
+    r"\b(is|are)\s+there\b.*?\b(any|left|available)",
+    r"\b(do\s+you\s+have|kya\s+apke\s+paas|kya\s+aapke\s+paas)\b",
+    r"\b(kuch|koi)\b.*?\b(bacha|bachi|bache|baki|available)\b",
+    r"\b(left|remaining)\s+(hai|kya|or\s+there)\b",
+    r"\b(bacha|bachi|bache|baki)\s+(hai|kya|hoga)\b",
+    r"\bstock\s+(batao|dikhao|check|karo|bataiye|hai|kya|kitna|left)\b",
+    r"\b(batao|check)\s+stock\b",
+]
+
+def _is_stock_query(message):
+    msg = message.lower().strip()
+    if any(kw in msg for kw in _STOCK_EXPLICIT_KW):
+        return True
+    for pat in _STOCK_QUESTION_PATTERNS:
+        if re.search(pat, msg):
+            return True
+    return False
+
+
+def _extract_stock_keywords(message):
+    words = re.findall(r'[a-zA-Z0-9]+', message.lower())
+    meaningful = []
+    for w in words:
+        if w in _HINGLISH_SYNONYMS:
+            meaningful.append(_HINGLISH_SYNONYMS[w])
+        elif w not in _STOCK_STOP_WORDS and len(w) > 1:
+            meaningful.append(w)
+    return meaningful
+
+
+def _handle_stock_query(conn, message, conversation_id):
+    """Return stock info for the item mentioned in the query.
+    Preserves existing conversation state (confirmed/pending) if present."""
+    # Load existing conversation state if it exists
+    existing_confirmed = []
+    existing_pending = []
+    existing_bill = None
+    existing_state = "active"
+    if conversation_id:
+        conv_row = conn.execute(
+            "SELECT confirmed_items, pending_items FROM conversations WHERE id=?",
+            (conversation_id,)
+        ).fetchone()
+        if conv_row:
+            existing_confirmed = json.loads(conv_row["confirmed_items"] or "[]")
+            existing_pending = json.loads(conv_row["pending_items"] or "[]")
+            if existing_confirmed:
+                existing_bill = generate_bill(existing_confirmed)
+            existing_state = "awaiting_clarification" if existing_pending else (
+                "confirmed" if existing_confirmed else "active"
+            )
+
+    keywords = _extract_stock_keywords(message)
+    products = conn.execute(
+        "SELECT id, name, category, brand, stock, unit, price FROM products ORDER BY name"
+    ).fetchall()
+
+    scored_matches = []
+    if keywords:
+        for p in products:
+            p = dict(p)
+            text = f"{p['name']} {p['category']} {p.get('brand') or ''}".lower()
+            text_words = set(re.findall(r'[a-zA-Z0-9]+', text))
+            
+            # Count exact word matches
+            match_count = sum(1 for kw in keywords if kw in text_words or any(kw in tw for tw in text_words))
+            if match_count > 0:
+                scored_matches.append((match_count, p))
+        
+        # Sort by match count descending
+        scored_matches.sort(key=lambda x: x[0], reverse=True)
+
+    if scored_matches:
+        top_matches = [p for _, p in scored_matches[:6]]
+        lines = ["📦 **Stock Availability:**"]
+        for p in top_matches:
+            if p["stock"] == 0:
+                lines.append(f"❌ **{p['name']}**: Out of stock (0 available)")
+            elif p["stock"] <= 5:
+                lines.append(f"⚠️ **{p['name']}**: Sirf {p['stock']} packet bacha hai (Low Stock)")
+            else:
+                lines.append(f"✅ **{p['name']}**: {p['stock']} packet(s) available (Rs{p['price']})")
+        
+        if existing_confirmed:
+            lines.append(f"\n💡 *Current order mein {len(existing_confirmed)} item(s) confirmed hain.*")
+        reply = "\n".join(lines)
+    else:
+        # General stock overview
+        out_of_stock = [dict(p) for p in products if dict(p)["stock"] == 0]
+        low_stock = [dict(p) for p in products if 0 < dict(p)["stock"] <= 5]
+        
+        lines = ["📊 **Store Inventory Status:**"]
+        if out_of_stock:
+            lines.append("❌ **Out of stock:** " + ", ".join(p['name'] for p in out_of_stock[:4]))
+        if low_stock:
+            lines.append("⚠️ **Low stock:** " + ", ".join(f"{p['name']} ({p['stock']} left)" for p in low_stock[:4]))
+        
+        lines.append("\n✅ Baaki sabhi grocery items (Atta, Rice, Dal, Oil, Dairy, Spices, Snacks) fresh stock mein available hain!")
+        lines.append("💡 *Kisi item ka stock janne ke liye puchiye, jaise: 'Atta kitna bacha hai?' ya 'Fortune Oil available hai?'*")
+        if existing_confirmed:
+            lines.append(f"\n💡 *Current order mein {len(existing_confirmed)} item(s) confirmed hain.*")
+        reply = "\n".join(lines)
+
+    conn.close()
+    return jsonify({
+        "conversation_id": conversation_id,
+        "confirmed": existing_confirmed,
+        "pending": existing_pending,
+        "bill_preview": existing_bill,
+        "state": existing_state,
+        "bot_reply": reply,
+    })
+
+
+def _sync_order_items_and_stock(conn, order_id, confirmed_items):
+    """Synchronize confirmed items with order_items table and accurately update product stock."""
+    recorded_rows = conn.execute(
+        "SELECT product_id, qty FROM order_items WHERE order_id=?", (order_id,)
+    ).fetchall()
+    recorded_map = {row["product_id"]: row["qty"] for row in recorded_rows}
+    
+    current_map = {}
+    for item in confirmed_items:
+        pid = item["product_id"]
+        current_map[pid] = current_map.get(pid, 0) + item.get("qty", 1)
+        
+    for item in confirmed_items:
+        pid = item["product_id"]
+        qty = item.get("qty", 1)
+        prev_qty = recorded_map.get(pid, 0)
+        
+        if pid not in recorded_map:
+            conn.execute(
+                "INSERT INTO order_items "
+                "(order_id, product_id, product_name, qty, unit, price_snapshot, subtotal) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (
+                    order_id, pid, item["product_name"],
+                    qty, item.get("unit", "packet(s)"), item["price_snapshot"],
+                    qty * item["price_snapshot"]
+                )
+            )
+            conn.execute("UPDATE products SET stock = MAX(0, stock - ?) WHERE id=?", (qty, pid))
+            recorded_map[pid] = qty
+        elif qty != prev_qty:
+            diff = qty - prev_qty
+            conn.execute(
+                "UPDATE order_items SET qty=?, subtotal=? WHERE order_id=? AND product_id=?",
+                (qty, qty * item["price_snapshot"], order_id, pid)
+            )
+            conn.execute("UPDATE products SET stock = MAX(0, stock - ?) WHERE id=?", (diff, pid))
+            recorded_map[pid] = qty
+
+    for pid, prev_qty in list(recorded_map.items()):
+        if pid not in current_map:
+            conn.execute("DELETE FROM order_items WHERE order_id=? AND product_id=?", (order_id, pid))
+            conn.execute("UPDATE products SET stock = stock + ? WHERE id=?", (prev_qty, pid))
+
+
+def _extract_pack_size(product_name):
+    """Extract (qty, unit) from product name like 'Aashirvaad Atta 5kg' → (5.0, 'kg')."""
+    import re as _re
+    m = _re.search(r"(\d+(?:\.\d+)?)\s*(kg|g|ml|L)\b", product_name, _re.IGNORECASE)
+    if m:
+        qty = float(m.group(1))
+        raw_unit = m.group(2)
+        unit = "L" if raw_unit.upper() == "L" else raw_unit.lower()
+        return qty, unit
+    return None, None
+
+
 def extract_timing(message):
     patterns = [
         "kal subah", "aaj shaam", "abhi", "jaldi", "kal tak",
@@ -59,6 +257,16 @@ def _handle_cancel(conn, conv, conversation_id, confirmed, pending, cancel_info)
     order_id = conv["order_id"]
 
     if cancel_info.get("cancel_all"):
+        # Restore stock for any confirmed items in this order
+        recorded_items = conn.execute(
+            "SELECT product_id, qty FROM order_items WHERE order_id=?", (order_id,)
+        ).fetchall()
+        for it in recorded_items:
+            conn.execute(
+                "UPDATE products SET stock = stock + ? WHERE id=?",
+                (it["qty"], it["product_id"])
+            )
+
         conn.execute(
             "UPDATE conversations SET confirmed_items='[]', pending_items='[]' WHERE id=?",
             (conversation_id,),
@@ -93,6 +301,15 @@ def _handle_cancel(conn, conv, conversation_id, confirmed, pending, cancel_info)
                 new_confirmed.append(item)
 
         if removed:
+            # Restore stock for removed item
+            conn.execute(
+                "UPDATE products SET stock = stock + ? WHERE id=?",
+                (removed["qty"], removed["product_id"])
+            )
+            conn.execute(
+                "DELETE FROM order_items WHERE order_id=? AND product_id=?",
+                (order_id, removed["product_id"])
+            )
             conn.execute(
                 "UPDATE conversations SET confirmed_items=? WHERE id=?",
                 (json.dumps(new_confirmed), conversation_id),
@@ -147,6 +364,10 @@ def handle_message():
         return jsonify({"error": "Empty message"}), 400
 
     conn = get_db()
+
+    # ── Stock query check (before any parsing) ───────────────────────────────
+    if _is_stock_query(message):
+        return _handle_stock_query(conn, message, data.get("conversation_id"))
 
     # ── New conversation ─────────────────────────────────────────────────────
     if not conversation_id:
@@ -203,19 +424,41 @@ def handle_message():
 
     ambiguous = []
     not_found = []
+    # Track IDs already confirmed BEFORE this turn to avoid duplicate deduction
+    prev_confirmed_ids = {item["product_id"] for item in confirmed}
+    newly_confirmed = []
 
     for result in match_results:
         status = result["status"]
         if status == "matched":
             p = result["product"]
-            confirmed.append({
+            parsed_qty  = result["item"].get("qty")
+            parsed_unit = result["item"].get("unit") or p["unit"]
+            # qty = number of PACKETS ordered, not the weight/volume.
+            # The product name already encodes the size (e.g. '5kg').
+            # So if user says '2 Aashirvaad Atta 5kg', qty=2 (packets).
+            # If user says '1 Aashirvaad Atta 5kg', qty=1.
+            # The parser may return qty=5 unit=kg (the pack size) when user
+            # just says 'Aashirvaad Atta 5kg' without a separate count —
+            # in that case treat it as 1 packet.
+            prod_qty, prod_unit = _extract_pack_size(p["name"])
+            if prod_qty is not None and parsed_qty == prod_qty and parsed_unit == prod_unit:
+                # Parser echoed the pack size as qty — user ordered 1 packet
+                order_qty = 1
+            else:
+                order_qty = parsed_qty or 1
+
+            entry = {
                 "product_id":     p["id"],
                 "product_name":   p["name"],
-                "qty":            result["item"].get("qty") or 1,
-                "unit":           result["item"].get("unit") or p["unit"],
+                "qty":            order_qty,
+                "unit":           "packet(s)",
                 "price_snapshot": p["price"],
                 "confidence":     result["score"],
-            })
+            }
+            confirmed.append(entry)
+            if p["id"] not in prev_confirmed_ids:
+                newly_confirmed.append(entry)
         elif status in ("ambiguous", "ambiguous_qty", "size_mismatch", "needs_qty"):
             ambiguous.append(_make_pending_entry(result))
         elif status == "out_of_stock":
@@ -264,17 +507,7 @@ def handle_message():
         response["final_bill"]    = bill
 
         order_id = conv["order_id"]
-        for item in confirmed:
-            conn.execute(
-                "INSERT INTO order_items "
-                "(order_id, product_id, product_name, qty, unit, price_snapshot, subtotal) "
-                "VALUES (?,?,?,?,?,?,?)",
-                (
-                    order_id, item["product_id"], item["product_name"],
-                    item["qty"], item["unit"], item["price_snapshot"],
-                    item["qty"] * item["price_snapshot"],
-                ),
-            )
+        _sync_order_items_and_stock(conn, order_id, confirmed)
         conn.execute(
             "UPDATE orders SET status='confirmed', total=? WHERE id=?",
             (bill["grand_total"], order_id),
@@ -301,6 +534,11 @@ def handle_reply():
     reply           = transliterate_hindi_to_roman(raw_reply)
 
     conn  = get_db()
+
+    # ── Stock query check (works even during clarification) ──────────────────
+    if _is_stock_query(reply):
+        return _handle_stock_query(conn, reply, conversation_id)
+
     conv  = dict(conn.execute(
         "SELECT * FROM conversations WHERE id=?", (conversation_id,)
     ).fetchone())
@@ -349,19 +587,27 @@ def handle_reply():
     products = [dict(p) for p in products_raw]
     pool     = {p["id"]: p["name"] for p in products}
 
+    # Track which products were already confirmed before this reply
+    prev_confirmed_ids = {item["product_id"] for item in confirmed}
+    newly_confirmed = []
+
     for res in resolved:
         chosen = res.get("chosen", "")
         match  = rprocess.extractOne(chosen, pool, scorer=rfuzz.WRatio)
         if match and match[1] > 60:
             product = next(p for p in products if p["id"] == match[2])
-            confirmed.append({
+            order_qty = res.get("qty") or 1
+            entry = {
                 "product_id":     product["id"],
                 "product_name":   product["name"],
-                "qty":            res.get("qty") or 1,
-                "unit":           res.get("unit") or product["unit"],
+                "qty":            order_qty,
+                "unit":           "packet(s)",
                 "price_snapshot": product["price"],
                 "confidence":     match[1],
-            })
+            }
+            confirmed.append(entry)
+            if product["id"] not in prev_confirmed_ids:
+                newly_confirmed.append(entry)
 
     remaining_pending = [p for p in pending if p["item"] in still_unresolved]
 
@@ -399,17 +645,7 @@ def handle_reply():
         response["delivery_note"] = note
         response["final_bill"]    = bill
 
-        for item in confirmed:
-            conn.execute(
-                "INSERT OR IGNORE INTO order_items "
-                "(order_id, product_id, product_name, qty, unit, price_snapshot, subtotal) "
-                "VALUES (?,?,?,?,?,?,?)",
-                (
-                    order_id, item["product_id"], item["product_name"],
-                    item["qty"], item["unit"], item["price_snapshot"],
-                    item["qty"] * item["price_snapshot"],
-                ),
-            )
+        _sync_order_items_and_stock(conn, order_id, confirmed)
         conn.execute(
             "UPDATE orders SET status='confirmed', total=? WHERE id=?",
             (bill["grand_total"], order_id),
@@ -451,6 +687,48 @@ def get_orders():
         results.append(order_dict)
     conn.close()
     return jsonify(results)
+
+
+@app.route("/api/conversation/<int:conversation_id>/messages", methods=["POST"])
+def save_messages(conversation_id):
+    """Save chat messages for a conversation."""
+    data = request.get_json()
+    messages = data.get("messages", [])
+    conn = get_db()
+    conn.execute(
+        "UPDATE conversations SET chat_messages=? WHERE id=?",
+        (json.dumps(messages, ensure_ascii=False), conversation_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/conversation/<int:conversation_id>/messages", methods=["GET"])
+def get_messages(conversation_id):
+    """Retrieve chat messages for a conversation."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT chat_messages FROM conversations WHERE id=?", (conversation_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return jsonify([]), 404
+    return jsonify(json.loads(row["chat_messages"] or "[]"))
+
+
+
+@app.route('/api/conversation/by-order/<int:order_id>/messages', methods=['GET'])
+def get_messages_by_order(order_id):
+    conn = get_db()
+    row = conn.execute(
+        'SELECT chat_messages FROM conversations WHERE order_id=? ORDER BY id DESC LIMIT 1',
+        (order_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return jsonify([]), 404
+    return jsonify(json.loads(row['chat_messages'] or '[]'))
 
 
 if __name__ == "__main__":

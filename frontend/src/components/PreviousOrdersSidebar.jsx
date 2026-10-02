@@ -4,6 +4,28 @@ export default function PreviousOrdersSidebar({ isOpen, onToggle, currentOrderId
     const [orders, setOrders] = useState([])
     const [loading, setLoading] = useState(false)
     const [expandedOrderId, setExpandedOrderId] = useState(null)
+    const [chatHistory, setChatHistory] = useState({})
+    const [loadingChat, setLoadingChat] = useState(null)
+
+    const loadChatHistory = async (orderId) => {
+        // Find conversation_id for this order from the orders list
+        const order = orders.find(o => o.id === orderId)
+        if (!order || chatHistory[orderId]) return
+        setLoadingChat(orderId)
+        try {
+            // conversation_id is the same as the conversation row id
+            // We need to look it up - orders don't directly store it, so we use a heuristic
+            const res = await fetch(`http://localhost:5000/api/conversation/by-order/${orderId}/messages`)
+            if (res.ok) {
+                const msgs = await res.json()
+                setChatHistory(prev => ({ ...prev, [orderId]: msgs }))
+            }
+        } catch (e) {
+            console.error('Failed to load chat', e)
+        } finally {
+            setLoadingChat(null)
+        }
+    }
 
     const fetchOrders = async () => {
         setLoading(true)
@@ -204,7 +226,7 @@ export default function PreviousOrdersSidebar({ isOpen, onToggle, currentOrderId
                                     transition: "all 0.15s ease",
                                     cursor: "pointer"
                                 }}
-                                onClick={() => setExpandedOrderId(isExpanded ? null : ord.id)}
+                                onClick={() => { const next = isExpanded ? null : ord.id; setExpandedOrderId(next); if (next) loadChatHistory(ord.id) }}
                             >
                                 {/* Top row: ID + Status */}
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
@@ -282,6 +304,36 @@ export default function PreviousOrdersSidebar({ isOpen, onToggle, currentOrderId
                                             ))}
                                         </div>
 
+                                        {/* Chat History for this order */}
+                                        {chatHistory[ord.id] && chatHistory[ord.id].length > 0 && (
+                                            <div style={{ marginBottom: 10 }}>
+                                                <div style={{ fontWeight: 700, color: '#94a3b8', fontSize: 10, marginBottom: 6, letterSpacing: 0.5 }}>
+                                                    CHAT HISTORY ({chatHistory[ord.id].length} messages)
+                                                </div>
+                                                <div style={{ maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                    {chatHistory[ord.id].map((msg, mi) => (
+                                                        <div key={mi} style={{
+                                                            padding: '4px 8px',
+                                                            borderRadius: 6,
+                                                            fontSize: 10,
+                                                            lineHeight: 1.4,
+                                                            background: msg.role === 'user' ? '#1a2e1e' : '#141a24',
+                                                            color: msg.role === 'user' ? '#86efac' : '#94a3b8',
+                                                            borderLeft: msg.role === 'user' ? '2px solid #25D366' : '2px solid #3b4a5c',
+                                                            wordBreak: 'break-word'
+                                                        }}>
+                                                            <span style={{ fontWeight: 700, marginRight: 4 }}>{msg.role === 'user' ? 'You:' : 'Bot:'}</span>
+                                                            {msg.text}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {loadingChat === ord.id && (
+                                            <div style={{ fontSize: 10, color: '#64748b', textAlign: 'center', padding: '4px 0' }}>
+                                                Loading chat...
+                                            </div>
+                                        )}
                                         {/* Action buttons inside expanded order */}
                                         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                                             {onReorder && (

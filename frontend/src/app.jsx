@@ -1,22 +1,65 @@
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import ChatBox from "./components/ChatBox"
 import OrderPanel from "./components/OrderPanel"
 import BillCard from "./components/BillCard"
 import PreviousOrdersSidebar from "./components/PreviousOrdersSidebar"
 
+const STORAGE_KEY = "kirana_active_session"
+
+function loadSession() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY)
+        if (raw) return JSON.parse(raw)
+    } catch {}
+    return null
+}
+
+function saveSession(session) {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+    } catch {}
+}
+
+function clearSession() {
+    try {
+        localStorage.removeItem(STORAGE_KEY)
+    } catch {}
+}
+
+const INIT_MSG = [{ role: "bot", text: "Namaste! 🙏 Apna order boliye ya likhiye — Hindi ya English mein." }]
+
 export default function App() {
-    const [activeTab, setActiveTab] = useState("chat") // "chat" | "summary" | "bill"
+    const [activeTab, setActiveTab] = useState("chat")
     const [sidebarOpen, setSidebarOpen] = useState(true)
-    const [conversationId, setConversationId] = useState(null)
-    const [messages, setMessages] = useState([
-        { role: "bot", text: "Namaste! 🙏 Apna order boliye ya likhiye — Hindi ya English mein." }
-    ])
-    const [confirmed, setConfirmed] = useState([])
-    const [pending, setPending] = useState([])
-    const [bill, setBill] = useState(null)
-    const [deliveryNote, setDeliveryNote] = useState("")
-    const [state, setState] = useState("active")
+
+    // Restore session from localStorage on first mount
+    const saved = loadSession()
+    const [conversationId, setConversationId] = useState(saved?.conversationId || null)
+    const [messages, setMessages] = useState(saved?.messages || INIT_MSG)
+    const [confirmed, setConfirmed] = useState(saved?.confirmed || [])
+    const [pending, setPending] = useState(saved?.pending || [])
+    const [bill, setBill] = useState(saved?.bill || null)
+    const [deliveryNote, setDeliveryNote] = useState(saved?.deliveryNote || "")
+    const [state, setState] = useState(saved?.state || "active")
     const [loading, setLoading] = useState(false)
+
+    // Persist session to localStorage whenever key state changes
+    useEffect(() => {
+        if (conversationId || messages.length > 1) {
+            saveSession({ conversationId, messages, confirmed, pending, bill, deliveryNote, state })
+        }
+    }, [conversationId, messages, confirmed, pending, bill, deliveryNote, state])
+
+    // Also sync messages to backend DB so sidebar can show full chat history per order
+    useEffect(() => {
+        if (conversationId && messages.length > 1) {
+            fetch(`http://localhost:5000/api/conversation/${conversationId}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages })
+            }).catch(() => {})
+        }
+    }, [conversationId, messages])
 
     const sendMessage = async (text) => {
         setMessages(prev => [...prev, { role: "user", text }])
@@ -42,8 +85,6 @@ export default function App() {
             if (data.delivery_note) setDeliveryNote(data.delivery_note)
 
             setMessages(prev => [...prev, { role: "bot", text: data.bot_reply }])
-
-            // If order was just confirmed, automatically show brief notification or allow switching
         } catch (err) {
             console.error("Order error", err)
             setMessages(prev => [...prev, { role: "bot", text: "Sorry, kuch technical error aaya. Dobara try karein." }])
@@ -56,8 +97,9 @@ export default function App() {
         if (confirmed.length > 0 && !window.confirm("Kya aap naya order start karna chahte hain? Current order reset ho jayega.")) {
             return
         }
+        clearSession()
         setConversationId(null)
-        setMessages([{ role: "bot", text: "Namaste! 🙏 Naya order bataiye — Hindi ya English mein boliye ya likhiye." }])
+        setMessages(INIT_MSG)
         setConfirmed([])
         setPending([])
         setBill(null)

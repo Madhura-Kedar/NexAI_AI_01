@@ -136,9 +136,18 @@ def match_item(parsed_item, products):
                       f"Options: {', '.join(p['name'] + ' (Rs' + str(int(p['price'])) + ')' for p in in_stock[:4])}",
         }
 
-    # --- Size-aware matching (qty + unit both present) ----------------------
-    if req_qty is not None and req_unit:
-        req_base, req_base_unit = to_base_unit(float(req_qty), req_unit)
+    # --- Size-aware matching ------------------------------------------------
+    raw_size_qty, raw_size_unit = extract_size_from_name(parsed_item.get("raw", ""))
+    target_qty = raw_size_qty if raw_size_qty is not None else req_qty
+    target_unit = raw_size_unit if raw_size_unit is not None else req_unit
+
+    if target_qty is not None and target_unit:
+        req_base, req_base_unit = to_base_unit(float(target_qty), target_unit)
+
+        # If user specified count + pack size (e.g. "2 Amul Butter 100g"), keep count in parsed_item
+        if raw_size_qty is not None and req_qty is not None and req_qty != raw_size_qty:
+            parsed_item["qty"] = int(req_qty)
+            parsed_item["unit"] = "packet(s)"
 
         size_matched_all = []
         for p in all_candidates:
@@ -180,10 +189,33 @@ def match_item(parsed_item, products):
                               f"Options: {', '.join(p['name'] + ' (Rs' + str(int(p['price'])) + ')' for p in size_in_stock[:4])}",
                 }
 
+            prod = size_in_stock[0]
+            requested_qty = parsed_item.get("qty") or 1
+            if prod["stock"] <= 0:
+                alts = find_alternatives(prod["category"], prod["id"])
+                return {
+                    "status": "out_of_stock",
+                    "item": parsed_item,
+                    "product": prod,
+                    "alternatives": alts,
+                    "score": top_score,
+                    "reason": f"'{prod['name']}' out of stock ho gaya hai." + (f" Available alternatives: {', '.join(a['name'] for a in alts)}" if alts else "")
+                }
+            elif prod["stock"] < requested_qty:
+                alts = find_alternatives(prod["category"], prod["id"])
+                return {
+                    "status": "out_of_stock",
+                    "item": parsed_item,
+                    "product": prod,
+                    "alternatives": alts,
+                    "score": top_score,
+                    "reason": f"'{prod['name']}' ka sirf {prod['stock']} available hai (aapne {int(requested_qty) if requested_qty==int(requested_qty) else requested_qty} maanga)."
+                }
+
             return {
                 "status": "matched",
                 "item": parsed_item,
-                "product": size_in_stock[0],
+                "product": prod,
                 "score": round(top_score, 1),
             }
 
@@ -209,8 +241,29 @@ def match_item(parsed_item, products):
     # --- Qty given but no unit (e.g. "2 butter") ----------------------------
     if req_qty is not None and not req_unit:
         if len(in_stock) == 1:
+            prod = in_stock[0]
+            if prod["stock"] <= 0:
+                alts = find_alternatives(prod["category"], prod["id"])
+                return {
+                    "status": "out_of_stock",
+                    "item": parsed_item,
+                    "product": prod,
+                    "alternatives": alts,
+                    "score": top_score,
+                    "reason": f"'{prod['name']}' out of stock hai."
+                }
+            elif prod["stock"] < req_qty:
+                alts = find_alternatives(prod["category"], prod["id"])
+                return {
+                    "status": "out_of_stock",
+                    "item": parsed_item,
+                    "product": prod,
+                    "alternatives": alts,
+                    "score": top_score,
+                    "reason": f"'{prod['name']}' ka sirf {prod['stock']} available hai (aapne {int(req_qty) if req_qty==int(req_qty) else req_qty} maanga)."
+                }
             return {"status": "matched", "item": parsed_item,
-                    "product": in_stock[0], "score": round(top_score, 1)}
+                    "product": prod, "score": round(top_score, 1)}
         return {
             "status": "needs_qty",
             "item": parsed_item,
@@ -241,8 +294,20 @@ def match_item(parsed_item, products):
         }
 
     # Fallback matched
+    prod = in_stock[0]
+    req_quantity = req_qty or 1
+    if prod["stock"] <= 0 or prod["stock"] < req_quantity:
+        alts = find_alternatives(prod["category"], prod["id"])
+        return {
+            "status": "out_of_stock",
+            "item": parsed_item,
+            "product": prod,
+            "alternatives": alts,
+            "score": top_score,
+            "reason": f"'{prod['name']}' stock mein available nahi hai."
+        }
     return {"status": "matched", "item": parsed_item,
-            "product": in_stock[0], "score": round(top_score, 1)}
+            "product": prod, "score": round(top_score, 1)}
 
 
 def run_matching(parsed_items):

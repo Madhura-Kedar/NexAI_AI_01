@@ -134,19 +134,46 @@ def clean_json(text):
 # ---------------------------------------------------------------------------
 
 def _gemini(prompt):
-    """Call Gemini and surface quota errors with a readable message."""
+    """Call Gemini and surface quota/safety errors with a readable message."""
     try:
         resp = model.generate_content(prompt)
+
+        # Handle blocked or empty responses gracefully
+        if not resp.candidates:
+            raise RuntimeError(
+                "Model ne koi jawab nahi diya (response blocked). Dobara try karein."
+            )
+        candidate = resp.candidates[0]
+        # finish_reason 1 = STOP (normal), others may mean blocked/error
+        finish_reason = getattr(candidate, "finish_reason", None)
+        if finish_reason is not None and finish_reason not in (1, "STOP"):
+            # Try to get text anyway; if it fails, return fallback
+            try:
+                return candidate.content.parts[0].text
+            except Exception:
+                raise RuntimeError(
+                    f"Model response was blocked or incomplete (reason: {finish_reason}). Dobara try karein."
+                )
+
         return resp.text
     except ResourceExhausted as e:
         raise RuntimeError(
             "API quota exhausted. Thoda wait karke dobara try karein."
         ) from e
+    except RuntimeError:
+        raise
+    except Exception as e:
+        raise RuntimeError(f"Gemini API error: {e}") from e
 
 
 def parse_order(message):
     prompt = PARSE_PROMPT.format(catalog=CATALOG_HINT, message=message)
-    return json.loads(clean_json(_gemini(prompt)))
+    try:
+        raw = _gemini(prompt)
+        return json.loads(clean_json(raw))
+    except (json.JSONDecodeError, ValueError):
+        # If model returns non-JSON (e.g., empty string), return empty items
+        return {"items": []}
 
 
 def detect_cancel(message):
@@ -242,7 +269,11 @@ _ORDER_KEYWORDS = {
 
     # Reply options for clarifications
     "pehla", "doosra", "first", "second", "dono", "both", "haan", "theek", "chalega",
-    "chota", "chhota", "bada", "small", "large", "medium"
+    "chota", "chhota", "bada", "small", "large", "medium",
+
+    # Stock / inventory queries
+    "stock", "quantity", "available", "inventory", "bacha", "baki", "left",
+    "remaining", "milega", "kitna", "kitne", "kitni", "much", "how",
 }
 
 
@@ -287,7 +318,11 @@ def generate_clarification(pending_items):
 def resolve_reply(pending_items, customer_reply):
     pending_str = json.dumps(pending_items, ensure_ascii=False)
     prompt = RESOLVE_PROMPT.format(pending=pending_str, reply=customer_reply)
-    return json.loads(clean_json(_gemini(prompt)))
+    try:
+        return json.loads(clean_json(_gemini(prompt)))
+    except (json.JSONDecodeError, ValueError):
+        # Fallback: mark everything as unresolved
+        return {"resolved": [], "unresolved": [p["item"] for p in pending_items]}
 
 
 def generate_delivery_note(items, timing, total):
